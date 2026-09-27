@@ -1059,7 +1059,7 @@ function speakerUpdate(dt,t){
   if(S.mode==='raise'){setArm(P.L,micArm);setArm(P.R,armP(-0.1,2.75,-0.2,0.35+Math.sin(t*3)*0.06));P.tilt=0.04;face=talking;}
   else if(S.mode==='mic'||S.mode==='aim'){setArm(P.L,micArm);face=talking;}
   else if(S.mode==='angry'){setArm(P.L,armP(0,0.2,-0.2,0));face=FACE.angry;P.lean=0.08;}
-  else if(S.mode==='reload'){setArm(P.L,armP(-0.3,0.25,-0.5,0));setArm(P.R,armP(0.07,-1.18,-1.73,0.56));face=FACE.angry;P.lean=0.05;P.pitch=0.12;}
+  else if(S.mode==='reload'){setArm(P.L,armP(-0.3,0.25,-0.5,0));setArm(P.R,armP(-1.05,-0.32,-1.5,0));face=FACE.angry;P.lean=0.05;P.pitch=0.12;}
   else if(S.mode==='spread'){setArm(P.L,armP(-0.15,1.35+Math.sin(t*4)*0.08,-0.1,-0.25));setArm(P.R,armP(-0.1,2.75,-0.05,0.3+Math.sin(t*5)*0.1));P.tilt=-0.14;P.roll=0.22;P.lean=-0.05;face=S.talk>0&&Math.floor(t*9)%2?FACE.talk:FACE.smile;}
   else if(S.mode==='laugh'){const k=t*8;setArm(P.L,armP(-0.1,1.4+Math.sin(k)*0.3,-0.2,0.3));setArm(P.R,armP(-0.1,2.4+Math.cos(k)*0.3,-0.2,0.2));P.bob=Math.abs(Math.sin(k))*0.05;P.lean=-0.1+Math.sin(k*0.5)*0.1;P.pitch=-0.25;face=FACE.laughA;}
   const k=1-Math.exp(-10*dt);
@@ -1089,14 +1089,14 @@ function speakerUpdate(dt,t){
     if(!S.clacked&&T>=0.72){S.clacked=true;shake=0.6;const gp=new THREE.Vector3();S.slide.getWorldPosition(gp);const g=toScreen(gp);
       fxDiv('tang halo',g.x+rnd(40,70),g.y-rnd(50,80),'철컥',700,{'--r':rnd(-14,-4)+'deg'});}
   }else{S.slide.position.y=0;}
-  S.gun.rotation.y=lerp(S.gun.rotation.y,S.mode==='reload'?-0.28:0,1-Math.exp(-14*dt));
+  S.gun.rotation.y=lerp(S.gun.rotation.y,S.mode==='reload'?-PI/2:0,1-Math.exp(-14*dt));
   S.recoil=Math.max(0,S.recoil-dt*6);
   if(S.recoil>0.6)S.slide.position.y=0.05*(S.recoil-0.6)/0.4;
   S.gun.visible=S.mode==='aim'||S.mode==='angry'||S.mode==='reload';
   S.mic.visible=S.mode!=='laugh'&&S.mode!=='reload'&&S.mode!=='angry';
   {const R=r.arms[1],L=r.arms[0];
    R.fist.visible=S.gun.visible;R.open.visible=!S.gun.visible;
-   const lf=S.mic.visible||(S.mode==='reload'&&S.relT>0.38&&S.relT<1.04);L.fist.visible=lf;L.open.visible=!lf;}
+   const lf=S.mic.visible||(S.mode==='reload'&&S.relT>0.5&&S.relT<0.86);L.fist.visible=lf;L.open.visible=!lf;}
   S.face.material.uniforms.uFace.value=face;
   if(S.talk>0)S.talk-=dt;
 }
