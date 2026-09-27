@@ -139,6 +139,12 @@ body{font-family:'Noto Sans KR','Noto Sans CJK KR','Apple SD Gothic Neo','Malgun
 #again{position:static;display:block;margin:0;transform:rotate(-1deg);pointer-events:auto}
 #again:active{transform:translate(4px,4px) rotate(-1deg)}
 
+#fire{position:fixed;right:calc(var(--safe-r) + max(22px,4vw));bottom:calc(var(--safe-b) + max(26px,5vh));width:92px;height:92px;border-radius:50%;
+  border:4px solid var(--ink);background:#fff;box-shadow:5px 5px 0 var(--ink);display:none;align-items:center;justify-content:center;z-index:4;
+  font:inherit;font-size:34px;font-weight:900;color:var(--red);letter-spacing:-0.04em;padding:0;touch-action:none;cursor:pointer}
+#fire.on{display:flex;animation:hudIn .25s cubic-bezier(.2,1.6,.4,1) both}
+#fire.down{transform:translate(4px,4px);box-shadow:1px 1px 0 var(--ink);background:#ffe9ea}
+#fire.empty{color:var(--graphite)}
 #mute{position:fixed;left:calc(var(--safe-l) + 12px);bottom:calc(var(--safe-b) + 12px);width:44px;height:44px;border:3px solid var(--ink);background:#fff;
   box-shadow:3px 3px 0 var(--ink);cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;z-index:5}
 #mute:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
@@ -164,6 +170,7 @@ body{font-family:'Noto Sans KR','Noto Sans CJK KR','Apple SD Gothic Neo','Malgun
 <div id="board"></div>
 <div id="black"></div>
 <div id="againBox"><div class="t halo">삶의 의미</div><button id="again" class="btn">다시 물어보기</button></div>
+<button id="fire" aria-label="발사">탕</button>
 <button id="mute" title="소리 켜기/끄기" aria-label="소리 켜기/끄기">
   <svg viewBox="0 0 24 24" fill="none" stroke="#232323" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h3.5L12 5v14l-4.5-4H4z"/><path class="w" d="M15.5 9.5a3.5 3.5 0 0 1 0 5M18 7a7 7 0 0 1 0 10"/><path class="x" d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
 </button>
@@ -1533,7 +1540,7 @@ const ONO_HEAD=['퍽','빡','딱'];
 function setPhase(p){G.phase=p;if(window.__freezeAt===p)window.__freeze=true;}
 function setScore(){scoreEl.textContent='점수 '+G.score;}
 function setAmmo(){
-  $('#ammoN').textContent=G.ammo;ammoEl.classList.toggle('empty',G.ammo===0);
+  $('#ammoN').textContent=G.ammo;ammoEl.classList.toggle('empty',G.ammo===0);$('#fire').classList.toggle('empty',G.ammo===0);
   const bar=$('#ammoBar');if(bar.children.length!==MAG){bar.innerHTML='';for(let i=0;i<MAG;i++)bar.appendChild(document.createElement('i'));}
   for(let i=0;i<MAG;i++)bar.children[i].classList.toggle('off',i>=G.ammo);
 }
@@ -1609,9 +1616,8 @@ function fire(tx,ty){
   let sx=tx,sy=ty,as=null;
   if(play){
     sx=W/2;sy=H/2;
-    as=assistTarget(tx,ty);
+    as=assistTarget(W/2,H/2);
     if(as){const s=toScreen(as.point);sx=s.x;sy=s.y;}
-    else as=assistTarget(W/2,H/2);
   }
   if(play){
     if(VM.rel>=0)return;
@@ -1736,7 +1742,7 @@ function resetGame(){
   G.score=0;G.hits=0;G.misses=0;G.timeLeft=PLAY_TIME;G.spawnT=2.5;G.waveT=6.8;G.waveN=0;G.finalDone=false;G.noRaiseT=0;G.lastRemark=0;G.freeze=0;G.ammo=MAG;G.lastTick=99;
   setScore();setAmmo();timerEl.textContent='';timerEl.classList.remove('low');
   bubbles.length=0;fxEl.innerHTML='';kkEl.textContent='';boardEl.classList.remove('on');boardEl.innerHTML='';
-  $('#againBox').classList.remove('on');$('#joke').classList.remove('on');crossEl.classList.remove('on');ammoEl.classList.remove('on','rel','empty');hintEl.classList.remove('on');bigOff();
+  $('#againBox').classList.remove('on');$('#joke').classList.remove('on');crossEl.classList.remove('on');fireEl.classList.remove('on','down');aimPtrs.clear();ammoEl.classList.remove('on','rel','empty');hintEl.classList.remove('on');bigOff();
   pPos.fill(-999);pLife.fill(0);clearDecals();casings.forEach(c=>c.m.visible=false);magDrops.forEach(d=>scene.remove(d.m));magDrops.length=0;
   VM.rel=-1;VM.recoil=0;
   portrait=layoutPortrait();buildCrowd(portrait);
@@ -1772,13 +1778,13 @@ async function runIntro(){
   G.introRaisers.forEach(p=>{if(p.alive&&p.action&&p.action.type==='raise'){const a=p.action;a.hold=Math.max(0,a.t-a.rise)+rnd(4.6,6.6);a.dur=a.rise+a.hold+0.8;}});
   G.state='play';blackEl.classList.remove('on');hudEl.classList.add('on');murmurTo(0.03,0.6);setPhase('play');
   sUi(700);crossEl.classList.add('on');
-  setTimeout(()=>{if(alive()){ammoEl.classList.add('on');sUi(900);}},160);
-  setTimeout(()=>{if(alive()){hintEl.innerHTML='손 든 사람을 쏘세요<small>'+(IS_TOUCH?'드래그: 조준 · 탭: 발사':'마우스: 조준 · 클릭: 발사 · R: 장전')+'</small>';hintEl.classList.add('on');sUi(1100);}},320);
+  setTimeout(()=>{if(alive()){ammoEl.classList.add('on');if(IS_TOUCH)fireEl.classList.add('on');sUi(900);}},160);
+  setTimeout(()=>{if(alive()){hintEl.innerHTML='손 든 사람을 쏘세요<small>'+(IS_TOUCH?'화면 드래그: 조준 · 탕 버튼: 발사':'마우스: 조준 · 클릭: 발사 · R: 장전')+'</small>';hintEl.classList.add('on');sUi(1100);}},320);
   setTimeout(()=>{if(alive())hintEl.classList.remove('on');},3600);
 }
 async function runEnding(){
   const tok=++G.token;const alive=()=>tok===G.token;
-  G.state='endTalk';hintEl.classList.remove('on');crossEl.classList.remove('on');unlockPointer();cv.style.cursor='crosshair';
+  G.state='endTalk';hintEl.classList.remove('on');crossEl.classList.remove('on');fireEl.classList.remove('on','down');aimPtrs.clear();unlockPointer();cv.style.cursor='crosshair';
   edgeL.classList.remove('on');edgeR.classList.remove('on');
   crowd.people.forEach(p=>{p.action=null;p.look=null;p.scared=0;});
   murmurTo(0,0.3);
@@ -1830,38 +1836,57 @@ const cv=renderer.domElement;
 let locked=false;
 document.addEventListener('pointerlockchange',()=>{locked=document.pointerLockElement===cv;cv.style.cursor=locked?'none':(G.state==='play'?'default':'crosshair');});
 document.addEventListener('pointerlockerror',()=>{locked=false;});
-const ptr={id:null,x0:0,y0:0,x:0,y:0,t0:0,drag:false,fired:false,timer:null};
 function lookDelta(dx,dy,sens){cam.yawT=clamp(cam.yawT-dx*sens,-YAW_MAX,YAW_MAX);cam.pitchT=clamp(cam.pitchT-dy*sens,PITCH_MIN,PITCH_MAX);}
 const canShoot=()=>G.state==='play'||G.state==='endLaugh';
+const aiming=()=>G.state==='play'&&cam.mode==='pov';
+const touchSens=()=>(IS_TOUCH?1.55:1.4)/Math.max(320,W);
+// 조준 손가락: 여러 개 동시에 받음. 드래그는 조준만 하고 절대 쏘지 않음.
+const aimPtrs=new Map();
 cv.addEventListener('contextmenu',e=>e.preventDefault());
 cv.addEventListener('pointerdown',e=>{
-  if(!canShoot())return;
   e.preventDefault();
-  if(locked){fire(W/2,H/2);return;}
-  if(ptr.id!==null)return;
-  const id=e.pointerId,x0=e.clientX,y0=e.clientY;
-  ptr.id=id;ptr.x0=ptr.x=x0;ptr.y0=ptr.y=y0;ptr.t0=performance.now();ptr.drag=false;ptr.fired=false;
-  clearTimeout(ptr.timer);
-  ptr.timer=setTimeout(()=>{if(ptr.id===id&&!ptr.drag&&!ptr.fired&&canShoot()){ptr.fired=true;fire(x0,y0);}},55);
+  if(locked){if(canShoot())fire(W/2,H/2);return;}
+  if(G.state==='endLaugh'){fire(e.clientX,e.clientY);return;}
+  if(G.state!=='play')return;
+  aimPtrs.set(e.pointerId,{x0:e.clientX,y0:e.clientY,x:e.clientX,y:e.clientY,t0:e.timeStamp,drag:false,btn:false});
   try{cv.setPointerCapture(e.pointerId);}catch(err){}
 });
+function aimMove(e){
+  const a=aimPtrs.get(e.pointerId);if(!a)return;
+  const dx=e.clientX-a.x,dy=e.clientY-a.y;a.x=e.clientX;a.y=e.clientY;
+  if(!a.drag&&Math.hypot(e.clientX-a.x0,e.clientY-a.y0)>6)a.drag=true;
+  if(a.drag&&aiming())lookDelta(dx,dy,touchSens());
+}
 cv.addEventListener('pointermove',e=>{
   if(locked){if(G.state==='play')lookDelta(e.movementX||0,e.movementY||0,0.0016);return;}
-  if(e.pointerId!==ptr.id)return;
-  const dx=e.clientX-ptr.x,dy=e.clientY-ptr.y;ptr.x=e.clientX;ptr.y=e.clientY;
-  if(!ptr.drag&&Math.hypot(e.clientX-ptr.x0,e.clientY-ptr.y0)>(ptr.fired?11:6)){ptr.drag=true;clearTimeout(ptr.timer);}
-  if(ptr.drag&&G.state==='play'&&cam.mode==='pov'){const sens=(IS_TOUCH?1.55:1.4)/Math.max(320,W);lookDelta(dx,dy,sens);}
+  aimMove(e);
 });
-function ptrEnd(e){
-  if(e.pointerId!==ptr.id)return;
-  const wasDrag=ptr.drag,fired=ptr.fired,dt=performance.now()-ptr.t0;ptr.id=null;ptr.drag=false;ptr.fired=false;clearTimeout(ptr.timer);
-  try{cv.releasePointerCapture(e.pointerId);}catch(err){}
-  if(!canShoot())return;
-  if(!wasDrag&&!fired&&dt<450)fire(ptr.x0,ptr.y0);
-  if(!wasDrag&&!IS_TOUCH&&!locked&&G.state==='play')lockPointer();
+function aimEnd(e){
+  const a=aimPtrs.get(e.pointerId);if(!a)return;
+  aimPtrs.delete(e.pointerId);
+  try{e.target.releasePointerCapture(e.pointerId);}catch(err){}
+  if(a.btn){fireEl.classList.remove('down');return;}
+  if(G.state!=='play')return;
+  // 제자리에서 짧게 탭하면 조준점으로 발사 (탭한 위치는 판정에 쓰지 않음)
+  if(!a.drag&&e.timeStamp-a.t0<350)fire(W/2,H/2);
+  if(!a.drag&&!IS_TOUCH&&!locked)lockPointer();
 }
-cv.addEventListener('pointerup',ptrEnd);
-cv.addEventListener('pointercancel',e=>{if(e.pointerId===ptr.id){ptr.id=null;ptr.drag=false;ptr.fired=false;clearTimeout(ptr.timer);}});
+cv.addEventListener('pointerup',aimEnd);
+cv.addEventListener('pointercancel',e=>{aimPtrs.delete(e.pointerId);});
+// 탕 버튼: 누르는 순간 발사, 누른 채로 끌면 그 손가락으로도 조준
+const fireEl=$('#fire');
+fireEl.addEventListener('contextmenu',e=>e.preventDefault());
+fireEl.addEventListener('pointerdown',e=>{
+  e.preventDefault();e.stopPropagation();
+  if(G.state!=='play')return;
+  fireEl.classList.add('down');
+  aimPtrs.set(e.pointerId,{x0:e.clientX,y0:e.clientY,x:e.clientX,y:e.clientY,t0:e.timeStamp,drag:false,btn:true});
+  try{fireEl.setPointerCapture(e.pointerId);}catch(err){}
+  fire(W/2,H/2);
+});
+fireEl.addEventListener('pointermove',aimMove);
+fireEl.addEventListener('pointerup',aimEnd);
+fireEl.addEventListener('pointercancel',e=>{aimPtrs.delete(e.pointerId);fireEl.classList.remove('down');});
 
 /* ================= loop ================= */
 let clockT=0,lastNow=performance.now();
