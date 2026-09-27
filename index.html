@@ -59,13 +59,14 @@ body{font-family:'Noto Sans KR','Noto Sans CJK KR','Apple SD Gothic Neo','Malgun
 @keyframes killBump{0%{transform:scale(.55);color:var(--red)}65%{transform:scale(1.2);color:var(--ink)}100%{transform:none}}
 #timer{font-size:clamp(14px,1.6vw,18px);font-weight:700;color:var(--ink);margin-top:2px}
 #timer.low{color:var(--red);animation:blink 1s steps(2) infinite}
-#finalCountdown{position:fixed;left:50%;top:43%;transform:translate(-50%,-50%) rotate(-3deg);
-  font-size:clamp(84px,16vw,190px);line-height:1;font-weight:900;font-variant-numeric:tabular-nums;
-  color:var(--red);text-shadow:3px 3px 0 #fff,-3px -3px 0 #fff,0 0 18px #fff;
-  pointer-events:none;display:none;z-index:1}
+#finalCountdown{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-3deg);
+  font-size:clamp(150px,27vw,320px);line-height:1;font-weight:900;font-variant-numeric:tabular-nums;
+  letter-spacing:-.07em;white-space:nowrap;color:var(--red);-webkit-text-stroke:4px #fff;
+  text-shadow:4px 5px 0 var(--ink),-4px -3px 0 var(--ink),0 0 25px #fff;
+  pointer-events:none;display:none;z-index:7}
 #finalCountdown.on{display:block}
-#finalCountdown.pulse{animation:finalTick .5s cubic-bezier(.18,1.45,.4,1) both}
-@keyframes finalTick{from{opacity:1;transform:translate(-50%,-50%) rotate(-3deg) scale(1.9)}to{opacity:1;transform:translate(-50%,-50%) rotate(-3deg) scale(1)}}
+#finalCountdown.pulse{animation:finalTick .72s cubic-bezier(.18,.85,.26,1) both}
+@keyframes finalTick{0%{opacity:1;transform:translate(-50%,-50%) rotate(-3deg) scale(2.15)}70%{opacity:1;transform:translate(-50%,-50%) rotate(-3deg) scale(1.06)}100%{opacity:1;transform:translate(-50%,-50%) rotate(-3deg) scale(1)}}
 #timer.penalty{animation:timePenalty .42s ease-out}
 @keyframes timePenalty{0%,100%{transform:none}25%{transform:translateX(-7px) scale(1.28);color:var(--red)}55%{transform:translateX(5px) scale(1.12);color:var(--red)}}
 @keyframes blink{50%{opacity:.35}}
@@ -1610,12 +1611,15 @@ function sUi(pitch){
   const o=C.createOscillator();o.type='square';o.frequency.value=pitch||900;const g=envGain(t,0.001,0.07,0.04);o.connect(g);g.connect(A.master);o.start(t);o.stop(t+0.06);
   const n=noiseSrc(1);const hp=C.createBiquadFilter();hp.type='highpass';hp.frequency.value=4000;const g2=envGain(t,0.001,0.12,0.02);n.connect(hp);hp.connect(g2);g2.connect(A.master);n.start(t);n.stop(t+0.04);
 }
-function sTimer(){
+function sTimer(remaining){
   if(!A.ctx)return;const C=A.ctx,t=C.currentTime+0.005;
-  const hi=C.createOscillator();hi.type='triangle';hi.frequency.value=1050;
-  const hg=envGain(t,0.002,0.46,0.13);hi.connect(hg);hg.connect(A.master);hi.start(t);hi.stop(t+0.16);
-  const lo=C.createOscillator();lo.type='sine';lo.frequency.setValueAtTime(600,t);lo.frequency.exponentialRampToValueAtTime(440,t+0.11);
-  const lg=envGain(t,0.002,0.24,0.14);lo.connect(lg);lg.connect(A.master);lo.start(t);lo.stop(t+0.17);
+  const urgent=remaining<=3?1.15:1;
+  const hi=C.createOscillator();hi.type='triangle';hi.frequency.value=remaining<=3?1250:1050;
+  const hg=envGain(t,0.002,0.88*urgent,0.22);hi.connect(hg);hg.connect(A.master);hi.start(t);hi.stop(t+0.26);
+  const lo=C.createOscillator();lo.type='sine';lo.frequency.setValueAtTime(600,t);lo.frequency.exponentialRampToValueAtTime(440,t+0.17);
+  const lg=envGain(t,0.002,0.5*urgent,0.23);lo.connect(lg);lg.connect(A.master);lo.start(t);lo.stop(t+0.27);
+  const n=noiseSrc(1),hp=C.createBiquadFilter();hp.type='highpass';hp.frequency.value=2200;
+  const ng=envGain(t,0.001,0.36*urgent,0.045);n.connect(hp);hp.connect(ng);ng.connect(A.master);n.start(t);n.stop(t+0.06);
 }
 function sFeedback(delay){
   if(!A.ctx)return;const C=A.ctx,t=C.currentTime+(delay||0);
@@ -1637,15 +1641,36 @@ function startMurmur(){
 let murmurLevel=0;
 function murmurTo(v,sec){murmurLevel=v;if(!A.murmur)return;const t=A.ctx.currentTime,tau=sec||0.4;A.murmur.gain.cancelScheduledValues(t);A.murmur.gain.setTargetAtTime(v,t,tau);if(v===0)A.murmur.gain.setValueAtTime(0,t+Math.max(0.25,tau*6));}
 function murmurDuck(sec){if(!A.murmur)return;const t=A.ctx.currentTime;A.murmur.gain.cancelScheduledValues(t);A.murmur.gain.setTargetAtTime(0,t,0.05);A.murmur.gain.setTargetAtTime(murmurLevel,t+sec,0.4);}
+function endingAudioSession(){
+  if(A.endingAudio)return A.endingAudio;
+  const C=A.ctx,direct=C.createGain(),rev=C.createConvolver(),wet=C.createGain();
+  rev.buffer=A.rev.buffer;wet.gain.value=0.55;
+  direct.connect(A.master);rev.connect(wet);wet.connect(A.master);
+  return A.endingAudio={direct,rev,wet,sources:[]};
+}
+function stopEndingAudio(){
+  const session=A.endingAudio;if(!session||!A.ctx)return;
+  A.endingAudio=null;
+  const t=A.ctx.currentTime;
+  for(const gain of [session.direct,session.wet]){
+    gain.gain.cancelScheduledValues(t);
+    gain.gain.setValueAtTime(gain.gain.value,t);
+    gain.gain.linearRampToValueAtTime(0,t+0.025);
+  }
+  for(const source of session.sources)try{source.stop(t+0.03);}catch(e){}
+  setTimeout(()=>{session.direct.disconnect();session.rev.disconnect();session.wet.disconnect();},150);
+}
 function sApplause(dur,vol){
   if(!A.ctx)return;const C=A.ctx,t=C.currentTime;
+  const ending=endingAudioSession();
   const s=C.createBufferSource();s.buffer=A.clapBuf;s.loop=true;const bp=C.createBiquadFilter();bp.type='bandpass';bp.frequency.value=1700;bp.Q.value=0.5;
   const g=C.createGain();g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(vol,t+0.4);g.gain.setValueAtTime(vol,t+dur-1);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
-  s.connect(bp);bp.connect(g);g.connect(A.master);const sd=C.createGain();sd.gain.value=0.35;g.connect(sd);sd.connect(A.rev);s.start(t);s.stop(t+dur+0.1);
+  s.connect(bp);bp.connect(g);g.connect(ending.direct);const sd=C.createGain();sd.gain.value=0.35;g.connect(sd);sd.connect(ending.rev);s.start(t);s.stop(t+dur+0.1);ending.sources.push(s);
 }
 function sLaugh(voices,dur){
   if(!A.ctx||voices<=0)return;const C=A.ctx,t0=C.currentTime+0.05;
-  const bus=C.createGain();bus.gain.value=Math.min(0.9,0.32+voices*0.03);bus.connect(A.master);const sd=C.createGain();sd.gain.value=0.5;bus.connect(sd);sd.connect(A.rev);
+  const ending=endingAudioSession();
+  const bus=C.createGain();bus.gain.value=Math.min(0.9,0.32+voices*0.03);bus.connect(ending.direct);const sd=C.createGain();sd.gain.value=0.5;bus.connect(sd);sd.connect(ending.rev);
   for(let v=0;v<voices;v++){
     const f0=rnd(0,1)<0.5?rnd(120,190):rnd(210,330);
     const o=C.createOscillator();o.type='sawtooth';o.frequency.value=f0;
@@ -1671,6 +1696,7 @@ function sLaugh(voices,dur){
       t+=w+rnd(0.05,0.2);
     }
     o.start(t0);o.stop(end+0.2);nz.start(t0);nz.stop(end+0.2);
+    ending.sources.push(o,nz);
   }
 }
 
@@ -2048,6 +2074,7 @@ window.addEventListener('resize',()=>{clearTimeout(resizeT);resizeT=setTimeout(r
 
 function resetGame(){
   stopSpeech();
+  stopEndingAudio();
   clearTimeout(timePenaltyTimer);timePenaltyTimer=null;
   G.score=0;G.hits=0;G.misses=0;G.postKills=0;G.timeLeft=PLAY_TIME;G.spawnT=2.5;G.waveT=6.8;G.waveN=0;G.finalDone=false;G.noRaiseT=0;G.lastRemark=0;G.freeze=0;G.ammo=MAG;G.lastTick=99;G.timerStarted=false;G.boardReady=false;
   setScore();setAmmo();timerEl.textContent='';timerEl.classList.remove('low','penalty');updateFinalCountdown(0);
@@ -2264,10 +2291,12 @@ function frame(now){
   if(G.state==='play'){
     if(G.timerStarted){
       G.timeLeft-=rdt;const tl=Math.max(0,Math.ceil(G.timeLeft));timerEl.textContent='남은 시간 '+tl;updateFinalCountdown(tl);
-      if(tl<=10){timerEl.classList.add('low');if(tl<G.lastTick&&tl>0)sTimer();}G.lastTick=tl;
+      if(tl<=10){timerEl.classList.add('low');if(tl<G.lastTick&&tl>0)sTimer(tl);}G.lastTick=tl;
       scheduleCrowd(dt);
       const alive=crowd.people.filter(p=>p.alive).length;
-      if(G.timeLeft<=0||alive<=Math.max(4,crowd.N*0.08)){G.timeLeft=0;runEnding();}
+      // A nearly empty crowd starts the final countdown instead of skipping straight to the ending.
+      if(alive<=Math.max(4,crowd.N*0.08)&&G.timeLeft>10)G.timeLeft=10;
+      if(G.timeLeft<=0){G.timeLeft=0;runEnding();}
     }
   }else if(G.state==='title'){
     G.spawnT-=dt;if(G.spawnT<=0){G.spawnT=rnd(0.5,1.2);const f=crowd.people.filter(p=>!p.action);if(f.length){const p=pick(f);p.start(pick(['scratch','wave','fix','half','raise','clap']));}}
