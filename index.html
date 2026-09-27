@@ -60,12 +60,12 @@ body{font-family:'Noto Sans KR','Noto Sans CJK KR','Apple SD Gothic Neo','Malgun
 #timer{font-size:clamp(14px,1.6vw,18px);font-weight:700;color:var(--ink);margin-top:2px}
 #timer.low{color:var(--red);animation:blink 1s steps(2) infinite}
 #finalCountdown{position:fixed;left:50%;top:43%;transform:translate(-50%,-50%) rotate(-3deg);
-  font-size:clamp(72px,14vw,160px);line-height:1;font-weight:900;font-variant-numeric:tabular-nums;
+  font-size:clamp(84px,16vw,190px);line-height:1;font-weight:900;font-variant-numeric:tabular-nums;
   color:var(--red);text-shadow:3px 3px 0 #fff,-3px -3px 0 #fff,0 0 18px #fff;
   pointer-events:none;display:none;z-index:1}
 #finalCountdown.on{display:block}
-#finalCountdown.pulse{animation:finalTick .36s cubic-bezier(.18,1.45,.4,1) both}
-@keyframes finalTick{from{opacity:.5;transform:translate(-50%,-50%) rotate(-3deg) scale(1.55)}to{opacity:1;transform:translate(-50%,-50%) rotate(-3deg) scale(1)}}
+#finalCountdown.pulse{animation:finalTick .5s cubic-bezier(.18,1.45,.4,1) both}
+@keyframes finalTick{from{opacity:1;transform:translate(-50%,-50%) rotate(-3deg) scale(1.9)}to{opacity:1;transform:translate(-50%,-50%) rotate(-3deg) scale(1)}}
 #timer.penalty{animation:timePenalty .42s ease-out}
 @keyframes timePenalty{0%,100%{transform:none}25%{transform:translateX(-7px) scale(1.28);color:var(--red)}55%{transform:translateX(5px) scale(1.12);color:var(--red)}}
 @keyframes blink{50%{opacity:.35}}
@@ -1473,7 +1473,7 @@ function audioInit(){
   A.dist=new Float32Array(1024);for(let i=0;i<1024;i++){const x=i/512-1;A.dist[i]=Math.tanh(x*3.2);}
   A.clapBuf=makeClapBuffer(C);
   loadSfx(C);
-  startMurmur();
+  // Continuous crowd murmur removed.
 }
 function setMuted(m){A.muted=m;try{localStorage.setItem('sm_mute',m?'1':'0');}catch(e){}
   $('#mute').classList.toggle('off',m);if(A.master)A.master.gain.setTargetAtTime(m?0:0.85,A.ctx.currentTime,0.02);
@@ -1612,7 +1612,10 @@ function sUi(pitch){
 }
 function sTimer(){
   if(!A.ctx)return;const C=A.ctx,t=C.currentTime+0.005;
-  const o=C.createOscillator();o.type='sine';o.frequency.value=1200;const g=envGain(t,0.002,0.12,0.06);o.connect(g);g.connect(A.master);o.start(t);o.stop(t+0.1);
+  const hi=C.createOscillator();hi.type='triangle';hi.frequency.value=1050;
+  const hg=envGain(t,0.002,0.46,0.13);hi.connect(hg);hg.connect(A.master);hi.start(t);hi.stop(t+0.16);
+  const lo=C.createOscillator();lo.type='sine';lo.frequency.setValueAtTime(600,t);lo.frequency.exponentialRampToValueAtTime(440,t+0.11);
+  const lg=envGain(t,0.002,0.24,0.14);lo.connect(lg);lg.connect(A.master);lo.start(t);lo.stop(t+0.17);
 }
 function sFeedback(delay){
   if(!A.ctx)return;const C=A.ctx,t=C.currentTime+(delay||0);
@@ -1696,9 +1699,9 @@ function pumpSpeech(){
     if(!started&&item.o.onStart)item.o.onStart();
     if(speechCurrent===u)speechCurrent=null;if(speechCurrentItem===item)speechCurrentItem=null;
     speechDuck(false);item.resolve(started);setTimeout(pumpSpeech,55);};
-  u.onstart=()=>{if(!started){started=true;if(item.o.onStart)item.o.onStart();}};
+  u.onstart=()=>{if(doneOnce)return;if(!started){started=true;clearTimeout(speechWatchdog);speechWatchdog=setTimeout(()=>{if(speechCurrent===u){try{speechSynthesis.cancel();}catch(e){}done();}},Math.max(5000,item.text.length*350));if(item.o.onStart)item.o.onStart();}};
   u.onend=done;u.onerror=done;speechDuck(true);
-  speechWatchdog=setTimeout(()=>{if(speechCurrent===u)try{speechSynthesis.cancel();}catch(e){}done();},Math.max(5000,item.text.length*350));
+  speechWatchdog=setTimeout(()=>{if(speechCurrent===u){try{speechSynthesis.cancel();}catch(e){}done();}},item.o.maxStartDelay??Math.max(5000,item.text.length*350));
   try{speechSynthesis.resume();speechSynthesis.speak(u);}catch(e){done();}
 }
 function say(text,o){
@@ -1823,11 +1826,10 @@ function setAmmo(){
   const bar=$('#ammoBar');if(bar.children.length!==MAG){bar.innerHTML='';for(let i=0;i<MAG;i++)bar.appendChild(document.createElement('i'));}
   for(let i=0;i<MAG;i++)bar.children[i].classList.toggle('off',i>=G.ammo);
 }
-let remarkTimer=null,remarkNextTimer=null,remarkBusy=false,remarkUrgent=false,urgentQueue=[],lastRemarkText='',remarkSpeechSeq=0;
+let remarkTimer=null,remarkBusy=false,lastRemarkText='';
 let timePenaltyTimer=null;
 function clearRemark(){
-  remarkSpeechSeq++;
-  clearTimeout(remarkTimer);clearTimeout(remarkNextTimer);remarkTimer=null;remarkNextTimer=null;remarkBusy=false;remarkUrgent=false;urgentQueue.length=0;
+  clearTimeout(remarkTimer);remarkTimer=null;remarkBusy=false;
   remarkEl.classList.remove('on','bad');remarkEl.textContent='';
 }
 function nextRemark(list){
@@ -1835,35 +1837,17 @@ function nextRemark(list){
   const text=pick(choices.length?choices:list);lastRemarkText=text;return text;
 }
 function showRemark(text,urgent){
-  clearTimeout(remarkTimer);remarkBusy=true;remarkUrgent=urgent;
-  const seq=++remarkSpeechSeq;let shown=false;
-  const reveal=()=>{
-    if(shown||seq!==remarkSpeechSeq||G.state!=='play')return;shown=true;
-    remarkEl.textContent=text;remarkEl.classList.remove('on','bad');void remarkEl.offsetWidth;
-    if(urgent)remarkEl.classList.add('bad');remarkEl.classList.add('on');
-    speaker.talk=Math.min(3.5,0.09*text.length+0.4);
-    remarkTimer=setTimeout(()=>{
-      remarkEl.classList.remove('on','bad');remarkBusy=false;remarkUrgent=false;
-      if(urgentQueue.length){
-        const next=urgentQueue.shift();remarkBusy=true;remarkUrgent=true;
-        remarkNextTimer=setTimeout(()=>{
-          remarkNextTimer=null;
-          if(G.state==='play')showRemark(next,true);
-          else{remarkBusy=false;remarkUrgent=false;}
-        },120);
-      }
-    },urgent?2200:1900);
-  };
-  stopSpeech();say(text,{rate:1.12,onStart:reveal}).then(reveal);
+  clearTimeout(remarkTimer);remarkBusy=true;
+  remarkEl.textContent=text;remarkEl.classList.remove('on','bad');void remarkEl.offsetWidth;
+  if(urgent)remarkEl.classList.add('bad');remarkEl.classList.add('on');
+  speaker.talk=Math.min(3.5,0.09*text.length+0.4);
+  stopSpeech();say(text,{rate:1.12,maxStartDelay:900});
+  remarkTimer=setTimeout(()=>{remarkEl.classList.remove('on','bad');remarkBusy=false;},urgent?2000:1700);
 }
 function remark(list,force){
-  const now=performance.now();if(!force&&now-G.lastRemark<2600)return;G.lastRemark=now;
-  const text=nextRemark(list);
-  if(remarkBusy||remarkNextTimer){
-    if(force&&urgentQueue.length<2)urgentQueue.push(text);
-    return;
-  }
-  showRemark(text,!!force);
+  const now=performance.now();
+  if(!force&&(now-G.lastRemark<2600||remarkBusy))return;
+  G.lastRemark=now;showRemark(nextRemark(list),!!force);
 }
 
 /* ================= hit testing ================= */
@@ -2006,7 +1990,7 @@ function fire(tx,ty){
   else{G.score-=10;G.misses++;G.timeLeft=Math.max(0,G.timeLeft-WRONG_TIME_PENALTY);sGasp();murmurDuck(1.2);fxDiv('pop bad halo',hs.x,hs.y-40,'−10 · −'+WRONG_TIME_PENALTY+'초',950);bubbleOn(target,pick(LAST_WORDS),1800);
     scoreEl.classList.remove('hurt');void scoreEl.offsetWidth;scoreEl.classList.add('hurt');
     timerEl.textContent='남은 시간 '+Math.max(0,Math.ceil(G.timeLeft));updateFinalCountdown(Math.ceil(G.timeLeft));clearTimeout(timePenaltyTimer);timerEl.classList.remove('penalty');void timerEl.offsetWidth;timerEl.classList.add('penalty');timePenaltyTimer=setTimeout(()=>timerEl.classList.remove('penalty'),440);
-    const tok=G.token;setTimeout(()=>{if(tok===G.token&&G.state==='play')remark(REM_BAD,true);},300);}
+    const tok=G.token;setTimeout(()=>{if(tok===G.token&&G.state==='play')remark(REM_BAD,true);},120);}
   setScore(true);
   if(Math.random()<0.3){const al=crowd.people.filter(p=>p.alive&&!p.action&&!p.isRaised());for(let k=0;k<2&&al.length;k++)pick(al).start('clap');}
 }
