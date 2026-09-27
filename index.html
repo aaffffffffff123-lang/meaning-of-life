@@ -1722,7 +1722,7 @@ function sLaugh(voices,dur){
 
 /* ================= speech ================= */
 let koVoice=null,speechCurrent=null,speechCurrentItem=null,speechQueue=[],speechWatchdog=null,speechPrimed=false;
-function findVoice(){if(!('speechSynthesis' in window))return;const vs=speechSynthesis.getVoices();koVoice=vs.find(v=>/ko[-_]KR/i.test(v.lang))||vs.find(v=>/^ko/i.test(v.lang))||null;}
+function findVoice(){if(!('speechSynthesis' in window))return;const vs=speechSynthesis.getVoices();koVoice=vs.find(v=>v.default&&/^ko/i.test(v.lang))||vs.find(v=>/ko[-_]KR/i.test(v.lang))||vs.find(v=>/^ko/i.test(v.lang))||null;}
 function speechDuck(on){if(A.master&&A.ctx&&!A.muted)A.master.gain.setTargetAtTime(on?0.58:0.85,A.ctx.currentTime,0.025);}
 function stopSpeech(){
   const shouldCancel='speechSynthesis' in window&&(!!speechCurrent||speechSynthesis.speaking||speechSynthesis.pending);
@@ -1735,7 +1735,7 @@ function stopSpeech(){
 function pumpSpeech(){
   if(speechCurrent||!speechQueue.length||A.muted||document.hidden||!('speechSynthesis' in window))return;
   findVoice();const item=speechQueue.shift(),u=new SpeechSynthesisUtterance(item.text);speechCurrent=u;speechCurrentItem=item;
-  u.lang='ko-KR';
+  u.lang='ko-KR';if(koVoice)u.voice=koVoice;
   const shout=!!item.o.shout;
   u.rate=item.o.rate??(shout?1.34:1.05);
   u.pitch=item.o.pitch??(shout?1.1:1);
