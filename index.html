@@ -1503,18 +1503,25 @@ function sGun(){
   playSfx('gun'+(1+Math.floor(Math.random()*3)),0,0.92,rnd(0.97,1.03));
 }
 function sStart(){
-  if(!A.ctx)return;const C=A.ctx,t=C.currentTime+0.01;
-  const out=C.createGain();out.gain.value=0.65;const lp=C.createBiquadFilter();lp.type='lowpass';lp.frequency.value=2200;lp.Q.value=0.4;out.connect(lp);lp.connect(A.master);
-  // 말랑한 버튼을 누르는 낮은 '뭉'
-  const b=C.createOscillator();b.type='sine';b.frequency.setValueAtTime(170,t);b.frequency.exponentialRampToValueAtTime(95,t+0.07);const bg=envGain(t,0.004,0.45,0.08);b.connect(bg);bg.connect(out);b.start(t);b.stop(t+0.12);
-  // 뽀-옹: 살짝 밀려 올라가는 둥근 두 음 (솔 → 레)
-  [[392,0,0.5],[587.3,0.055,0.42]].forEach(([f,d,a])=>{
-    const ts=t+d;
-    const o=C.createOscillator();o.type='sine';o.frequency.setValueAtTime(f*0.72,ts);o.frequency.exponentialRampToValueAtTime(f,ts+0.045);
-    const g=C.createGain();g.gain.setValueAtTime(0.0001,ts);g.gain.linearRampToValueAtTime(a,ts+0.012);g.gain.exponentialRampToValueAtTime(a*0.35,ts+0.09);g.gain.exponentialRampToValueAtTime(0.0001,ts+0.19);
-    o.connect(g);g.connect(out);o.start(ts);o.stop(ts+0.21);
-    const o2=C.createOscillator();o2.type='triangle';o2.frequency.setValueAtTime(f*1.44,ts);o2.frequency.exponentialRampToValueAtTime(f*2,ts+0.045);
-    const g2=envGain(ts,0.006,a*0.12,0.09);o2.connect(g2);g2.connect(out);o2.start(ts);o2.stop(ts+0.13);
+  if(!A.ctx)return;
+  const C=A.ctx,t=C.currentTime+0.012;
+  const out=C.createGain();out.gain.value=0.9;
+  const lp=C.createBiquadFilter();lp.type='lowpass';lp.frequency.value=5200;
+  out.connect(lp);lp.connect(A.master);
+  // 밝고 또렷한 세 음: 솔-시-레. 마지막 음에 짧은 반짝임을 더한다.
+  [[392,0,0.25],[493.88,0.09,0.27],[587.33,0.18,0.36]].forEach(([f,d,level],i)=>{
+    const at=t+d, duration=i===2?0.24:0.16;
+    const o=C.createOscillator();o.type='triangle';o.frequency.value=f;
+    const g=C.createGain();g.gain.setValueAtTime(0.0001,at);
+    g.gain.linearRampToValueAtTime(level,at+0.004);
+    g.gain.exponentialRampToValueAtTime(level*0.55,at+0.06);
+    g.gain.exponentialRampToValueAtTime(0.0001,at+duration);
+    o.connect(g);g.connect(out);o.start(at);o.stop(at+duration+0.01);
+    const shine=C.createOscillator();shine.type='sine';shine.frequency.value=f*2;
+    const sg=C.createGain();sg.gain.setValueAtTime(0.0001,at);
+    sg.gain.linearRampToValueAtTime(level*0.22,at+0.003);
+    sg.gain.exponentialRampToValueAtTime(0.0001,at+duration*0.7);
+    shine.connect(sg);sg.connect(out);shine.start(at);shine.stop(at+duration*0.7+0.01);
   });
 }
 function sTink(){
@@ -2181,7 +2188,7 @@ async function kkLoop(tok,n){
 }
 
 $('#start').addEventListener('click',()=>{audioInit();sStart();findVoice();lockPointer();runIntro();unlockSpeech();});
-$('#again').addEventListener('click',()=>{audioInit();sStart();findVoice();lockPointer();runIntro();unlockSpeech();});
+$('#again').addEventListener('click',()=>{audioInit();sRack();findVoice();lockPointer();runIntro();unlockSpeech();});
 $('#mute').addEventListener('click',e=>{e.stopPropagation();setMuted(!A.muted);});
 $('#mute').classList.toggle('off',A.muted);
 ammoEl.addEventListener('click',e=>{e.stopPropagation();if(G.state==='play'&&G.ammo<MAG)startReload();});
