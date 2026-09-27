@@ -826,6 +826,12 @@ class Person{
     const type=r<0.5?'back':r<0.78?'crumple':'side';
     this.fall={t:0,type,dir:Math.random()<0.5?-1:1,dur:rnd(0.42,0.55),limpL:rnd(0.5,1.5),limpR:rnd(0.5,1.5),wrong:!correct,keep,
       push:new THREE.Vector3(dir.x,0,dir.z).normalize(),kb:type==='crumple'?rnd(0.12,0.22):rnd(0.35,0.6),head:part==='head'};
+    const f=this.fall,edgeZ=-0.7-this.row*1.18-0.59,lastRow=this.row>=crowd.rows-1;
+    const behindZ=f.behindZ=lastRow?crowd.backZ+0.15:edgeZ;
+    const keepRoom=type==='back'?0.55:0.24;
+    if(f.push.z<0){const room=this.home.z-(behindZ+keepRoom);f.kb=Math.min(f.kb,Math.max(0,room)/(-f.push.z));}
+    const dz=this.home.z+f.push.z*f.kb-behindZ;
+    f.lean=lastRow?Math.asin(clamp((dz-0.26)/(1.75*this.s),0.2,0.96)):Math.min(1.3,Math.atan2(dz,0.59));
     this.hitT=0;
     this.cur.pitch=part==='head'?-1.02:-0.62;
     this.cur.roll=this.fall.dir*(part==='head'?0.25:0.12);
@@ -852,7 +858,7 @@ class Person{
       r.root.rotation.set(0,this.baseYaw,f.dir*(PI/2-0.05)*e-f.dir*bounce);
       r.root.position.set(px,this.floorY+0.14*this.s*e,pz);
     }else{
-      r.root.rotation.set(-1.3*e+bounce,this.baseYaw,f.dir*0.15*e);
+      r.root.rotation.set(-f.lean*e+bounce,this.baseYaw,f.dir*0.15*e);
       r.root.position.set(px,this.floorY+0.06*e,pz);
     }
     r.body.rotation.x-=impact*(f.head?0.38:0.24);
@@ -861,7 +867,7 @@ class Person{
     if(f.t>0.26&&!this.poolPos){
       r.root.updateMatrixWorld(true);
       const v=new THREE.Vector3().setFromMatrixPosition(r.torso.matrixWorld);
-      this.poolPos=new THREE.Vector3(v.x,this.floorY+0.012+Math.random()*0.004,v.z);
+      this.poolPos=new THREE.Vector3(v.x,this.floorY+0.012+Math.random()*0.004,Math.max(v.z,f.behindZ+0.35));
     }
     if(this.poolPos&&this.poolS<this.poolMax){this.poolS=Math.min(this.poolMax,this.poolS+dt*(0.7+this.poolMax-this.poolS)*0.95);}
     if(f.t<1.2) this.setFace((f.wrong&&!f.head&&f.t<0.9)?FACE.sad:FACE.dead);
@@ -1729,7 +1735,7 @@ function stopSpeech(){
 function pumpSpeech(){
   if(speechCurrent||!speechQueue.length||A.muted||document.hidden||!('speechSynthesis' in window))return;
   findVoice();const item=speechQueue.shift(),u=new SpeechSynthesisUtterance(item.text);speechCurrent=u;speechCurrentItem=item;
-  u.lang=koVoice&&koVoice.lang?koVoice.lang:'ko-KR';if(koVoice)u.voice=koVoice;
+  u.lang='ko-KR';
   const shout=!!item.o.shout;
   u.rate=item.o.rate??(shout?1.34:1.05);
   u.pitch=item.o.pitch??(shout?1.1:1);
@@ -1760,7 +1766,7 @@ async function sceneSpeech(text,o,show,minMs){
 }
 function unlockSpeech(){
   if(speechPrimed||A.muted||!('speechSynthesis' in window))return;speechPrimed=true;findVoice();
-  try{speechSynthesis.resume();const u=new SpeechSynthesisUtterance('.');u.lang=koVoice&&koVoice.lang?koVoice.lang:'ko-KR';if(koVoice)u.voice=koVoice;u.volume=0;u.rate=10;speechSynthesis.speak(u);}catch(e){}
+  try{speechSynthesis.resume();const u=new SpeechSynthesisUtterance('.');u.lang='ko-KR';u.volume=0;u.rate=10;speechSynthesis.speak(u);}catch(e){}
 }
 if('speechSynthesis' in window){findVoice();speechSynthesis.onvoiceschanged=()=>{findVoice();pumpSpeech();};}
 
