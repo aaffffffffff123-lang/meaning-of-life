@@ -562,6 +562,21 @@ const Gm={};
     fp.push([new THREE.CylinderGeometry(0.017,0.016,0.06,7),M(-0.035,-0.045,0.052,0,0,-1.1)]);
     fp.push([sph(0.017,7,5),M(-0.008,-0.058,0.056)]);
     Gm.fist=merge(fp);
+    // 1인칭 장전용 왼손: 슬라이드를 위에서 덮어 움켜쥐는 손. 손바닥이 아래, 손가락이 오른쪽으로 넘어가 아래로 굽고, 엄지는 뒤쪽으로 내려온다
+    const cp=[[sph(0.056,14,10),M(0,-0.04,0,0,0,0,1.05,0.95,0.5)]];
+    const seg=(a,dir,len,r)=>{const q=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,-1,0),dir);
+      cp.push([new THREE.CylinderGeometry(r,r*0.93,len,7),new THREE.Matrix4().compose(a.clone().addScaledVector(dir,len/2),q,new THREE.Vector3(1,1,0.9))]);
+      const b=a.clone().addScaledVector(dir,len);cp.push([sph(r*0.97,7,5),M(b.x,b.y,b.z)]);return b;};
+    const fl=[0.034,0.04,0.038,0.03];
+    for(let k=0;k<4;k++){const x=-0.036+k*0.024;
+      let p=new THREE.Vector3(x,-0.074,0);
+      p=seg(p,new THREE.Vector3(0,-Math.cos(0.5),Math.sin(0.5)),fl[k],0.0135);
+      p=seg(p,new THREE.Vector3(0,-Math.cos(1.45),Math.sin(1.45)),fl[k]*0.95,0.0128);
+      seg(p,new THREE.Vector3(0,-Math.cos(2.3),Math.sin(2.3)),fl[k]*0.6,0.0122);}
+    {let p=new THREE.Vector3(0.05,-0.02,0.012);
+      p=seg(p,new THREE.Vector3(0.45,-0.45,0.77).normalize(),0.035,0.0145);
+      seg(p,new THREE.Vector3(0.2,-0.55,0.81).normalize(),0.03,0.0135);}
+    Gm.clawL=merge([[merge(cp),new THREE.Matrix4().set(0,-1,0,0, 0,0,-1,0, 1,0,0,0, 0,0,0,1)]]);
   }
   // hair
   const spikes=[[sph(0.163,18,10,0,PI*2,0,1.12),M()]];
@@ -593,11 +608,18 @@ const Gm={};
   Gm.mic=merge([[cyl(0.024,0.018,0.2,10),M(0,0.03,0)],[sph(0.045,12,10),M(0,0.15,0)]]);
   // first-person versions: barrel forward (-z), slide up (+y)
   const fpM=new THREE.Matrix4().makeRotationY(PI).multiply(new THREE.Matrix4().makeRotationX(-PI/2));
-  Gm.gunFP=merge([[Gm.gun,fpM]]);
+  // 1인칭 총은 앞뒤로 1.75배 늘려 쓰므로 손잡이를 따로 얇게 만든다. 손잡이가 주먹 한가운데를 지나고, 방아쇠울은 손잡이 앞에 둔다
+  Gm.gunFP=merge([
+    [new THREE.BoxGeometry(0.044,0.22,0.035),fpM.clone().multiply(M(0,-0.16,-0.005))],
+    [new THREE.BoxGeometry(0.03,0.105,0.037),M(0,-0.074,-0.068,-0.228,0,0)],
+    [new THREE.BoxGeometry(0.012,0.006,0.04),M(0,-0.055,-0.11)],
+    [new THREE.BoxGeometry(0.012,0.034,0.005),M(0,-0.039,-0.1295)],
+    [new THREE.BoxGeometry(0.006,0.024,0.004),M(0,-0.036,-0.107,0.3,0,0)]
+  ]);
   Gm.slideFP=merge([[Gm.slide,fpM]]);
   Gm.fistFP=merge([[Gm.fist,fpM]]);
   Gm.fistGrip=merge([[Gm.fistFP,new THREE.Matrix4().makeRotationZ(PI/2)]]);
-  Gm.mag=new THREE.BoxGeometry(0.03,0.085,0.045);
+  Gm.mag=new THREE.BoxGeometry(0.026,0.085,0.03);
   Gm.casing=merge([[cyl(0.0055,0.0055,0.02,8),M()],[cyl(0.0062,0.0062,0.004,8),M(0,-0.009,0)]]);
   Gm.cylUnit=cyl(0.5,0.5,1,12);
   Gm.foreUnit=cyl(0.07,0.06,1,14);
@@ -1079,21 +1101,26 @@ const VM=(function(){
   const slide=new THREE.Group();gun.add(slide);const slM=new THREE.Mesh(Gm.slideFP,hatchMat(false,0.28));slide.add(slM);const slO=new THREE.Mesh(hullGeo(Gm.slideFP),outlineMat(0.008));slide.add(slO);
   const muzzle=new THREE.Object3D();muzzle.position.set(0,0.028,-0.34);gun.add(muzzle);
   const eject=new THREE.Object3D();eject.position.set(0.03,0.055,-0.09);gun.add(eject);
-  const magSlot=new THREE.Object3D();magSlot.position.set(0,-0.075,-0.005);gun.add(magSlot);
+  const magSlot=new THREE.Object3D();magSlot.position.set(0,-0.0855,-0.0653);magSlot.rotation.x=-0.228;gun.add(magSlot);
   const magNew=new THREE.Mesh(Gm.mag,hatchMat(false,0.8));magSlot.add(magNew);magNew.add(new THREE.Mesh(hullGeo(Gm.mag),outlineMat(0.007)));magNew.visible=false;
   const foreR=new THREE.Group();g.add(foreR);add(foreR,Gm.foreUnit,0.04,0.012);
   // left hand + mic
   const handL=new THREE.Group();g.add(handL);
-  {const fm=new THREE.Mesh(Gm.fistGrip,hatchMat(false,0.02));fm.scale.set(-0.95,0.95,0.95);handL.add(fm);const fo=new THREE.Mesh(Gm.fistGrip,outlineMat(0.007));fo.scale.set(-0.95,0.95,0.95);handL.add(fo);}
-  const mic=new THREE.Group();mic.position.set(0,0.04,-0.02);mic.rotation.set(0.2,0,-0.15);handL.add(mic);add(mic,Gm.mic,0.72,0.008,0.75);
+  const micFist=new THREE.Group();handL.add(micFist);
+  {const fm=new THREE.Mesh(Gm.fistGrip,hatchMat(false,0.02));fm.scale.set(-0.95,0.95,0.95);micFist.add(fm);const fo=new THREE.Mesh(Gm.fistGrip,outlineMat(0.007));fo.scale.set(-0.95,0.95,0.95);micFist.add(fo);}
+  const mic=new THREE.Group();mic.position.set(0,0.04,-0.02);mic.rotation.set(0.2,0,-0.15);micFist.add(mic);add(mic,Gm.mic,0.72,0.008,0.75);
+  // 장전 때만 쓰는 왼손 두 가지: 새 탄창을 받쳐 밀어 넣는 편 손, 슬라이드를 위에서 움켜쥐는 손
+  const magHand=new THREE.Group();magHand.rotation.set(PI/2-0.25,0,0);magHand.position.set(0,-0.012,0.05);handL.add(magHand);add(magHand,Gm.hand,0.02,0.0065,1.2);magHand.visible=false;
+  const rackHand=new THREE.Group();rackHand.position.set(-0.035,0.03,0);handL.add(rackHand);add(rackHand,Gm.clawL,0.02,0.007,1.2);rackHand.visible=false;
   const foreL=new THREE.Group();g.add(foreL);add(foreL,Gm.foreUnit,0.04,0.012);
-  return {g,hand,gun,slide,muzzle,eject,magSlot,magNew,foreR,handL,mic,foreL,base:new THREE.Vector3(),baseL:new THREE.Vector3(),
+  return {g,hand,gun,slide,muzzle,eject,magSlot,magNew,foreR,handL,mic,micFist,magHand,rackHand,foreL,base:new THREE.Vector3(),baseL:new THREE.Vector3(),
+    lp:new THREE.Vector3(),pA:new THREE.Vector3(),pB:new THREE.Vector3(),pC:new THREE.Vector3(),armL:new THREE.Vector3(),lDrop:0,lArm:0,
     recoil:0,drawT:1,rel:-1,relDone:false,hw:0.4,hh:0.25,sway:new THREE.Vector2(),lastYaw:0,lastPitch:0};
 })();
 function placeVM(){
   const hh=Math.tan(camera.fov*PI/360)*0.5,hw=hh*(W/H);VM.hh=hh;VM.hw=hw;
-  if(portrait){VM.base.set(hw*0.6,-hh*0.98+0.03,-0.72);VM.baseL.set(-hw*1.15,-hh*1.3,-0.78);}
-  else{VM.base.set(hw*0.52,-hh*0.74+0.03,-0.52);VM.baseL.set(-hw*1.0,-hh*1.12,-0.6);}
+  if(portrait){VM.base.set(hw*0.6,-hh*0.98+0.02,-0.88);VM.baseL.set(-hw*1.15,-hh*1.3,-0.78);}
+  else{VM.base.set(hw*0.52,-hh*0.74+0.02,-0.68);VM.baseL.set(-hw*1.0,-hh*1.12,-0.6);}
 }
 function vmUpdate(rdt,dt){
   if(!VM.g.visible)return;
@@ -1107,17 +1134,18 @@ function vmUpdate(rdt,dt){
   const bob=Math.sin(clockT*1.3)*0.004;
   const R=V.recoil;const GZ_=1.75;
   // reload timeline
-  let relRoll=0,relPitch=0,slideZ=0,handLTarget=null,magY=null;
+  let relRoll=0,relPitch=0,slideZ=0,magY=null;
   if(V.rel>=0){
     V.rel+=rdt;const T=V.rel;
     const tilt=T<0.16?T/0.16:T>0.86?Math.max(0,1-(T-0.86)/0.16):1;
     relRoll=-0.55*tilt;relPitch=0.18*tilt;
     if(!V.relMagOut&&T>=0.16){V.relMagOut=true;spawnMagDrop();sMagOut();}
-    if(T>=0.36&&T<0.56){magY=lerp(-0.22,0,(T-0.36)/0.2);V.magNew.visible=true;}
-    else if(T>=0.56&&T<0.86){magY=0;V.magNew.visible=true;}
+    if(T>=0.2&&T<0.36){const k=(T-0.2)/0.16;magY=lerp(-0.75,-0.13,1-(1-k)*(1-k));V.magNew.visible=true;}
+    else if(T>=0.36&&T<0.54){const k=(T-0.36)/0.18;magY=lerp(-0.13,0,k*k);V.magNew.visible=true;}
+    else if(T>=0.54&&T<0.86){magY=0;V.magNew.visible=true;}
     else V.magNew.visible=false;
     if(!V.relMagIn&&T>=0.54){V.relMagIn=true;sMagIn();}
-    if(T>=0.56&&T<0.92){const k=T<0.66?(T-0.56)/0.1:T<0.82?1:1-(T-0.82)/0.1;handLTarget=k;}
+
     if(T>=0.66&&T<0.76)slideZ=0.075*Math.min(1,(T-0.66)/0.06);else if(T>=0.76&&T<0.8)slideZ=0.075*(1-(T-0.76)/0.04);
     if(!V.relRack&&T>=0.62){V.relRack=true;sRack();}
     if(!V.relDone&&T>=0.8){V.relDone=true;G.ammo=MAG;setAmmo();fxDiv('tang halo',W*0.62+rnd(-20,20),H*0.6+rnd(-20,20),'철컥',600,{'--r':rnd(-12,-4)+'deg'});camKick(0.012,0.3);}
@@ -1127,23 +1155,44 @@ function vmUpdate(rdt,dt){
   V.hand.position.set(V.base.x+V.sway.x*0.5,V.base.y-0.06-(1-dk)*0.45+bob+V.sway.y*0.5,V.base.z+R*0.07);
   V.hand.rotation.set(0.07+R*0.42+relPitch+V.sway.y*0.4,-0.05+V.sway.x*0.5,relRoll);
   V.slide.position.z=Math.max(slideZ,R>0.55?0.05*(R-0.55)/0.45:0)/GZ_;
-  V.gun.position.set(0,0.1,-0.07);
+  V.gun.position.set(0,0.11,0.09);
   if(magY!==null)V.magNew.position.y=magY; else V.magNew.position.y=0;
   // forearm right: from hand back to off-screen lower right
   {const a=V.hand.position,b=_v2.set(V.hw*1.1,-V.hh*2.3,-0.32);
     placeCyl(V.foreR,a,b);}
-  // left hand (mic): rest position, lifts when talking, moves to the slide on reload
+
+
+
+  // left hand: 평소엔 마이크를 쥐고 있고, 장전 때는 아래로 빠졌다가 새 탄창을 받쳐 들고 올라와 밀어 넣고,
+  // 슬라이드를 위에서 움켜쥐어 당긴 뒤 다시 아래로 빠진다. 장전이 끝나면 마이크를 쥔 채 천천히 올라온다
   const talkLift=speaker.talk>0?0.12:0;
-  let lx=V.baseL.x+V.sway.x*0.3,ly=V.baseL.y-(1-dk)*0.4+talkLift+bob*0.7+V.sway.y*0.3,lz=V.baseL.z;
+  const restL=(drop,out)=>out.set(V.baseL.x+V.sway.x*0.3-drop*0.08,V.baseL.y-(1-dk)*0.4+talkLift*(1-drop)+bob*0.7+V.sway.y*0.3-drop*0.55,V.baseL.z);
+  const easeL=k=>k<0.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
   V.mic.rotation.set(0.15-talkLift*2.2,0,0.25);
-  if(handLTarget!==null){const k=handLTarget,ek=k<0.5?2*k*k:1-Math.pow(-2*k+2,2)/2;
-    const tx=V.hand.position.x-0.09,ty=V.hand.position.y+0.12+0.1,tz=V.hand.position.z-0.16-0.07;
-    lx=lerp(lx,tx,ek);ly=lerp(ly,ty,ek);lz=lerp(lz,tz,ek);
-    V.mic.rotation.set(-1.2*ek,0,0.4*ek);
-    V.handL.rotation.set(-0.6*ek,0.3*ek,1.4*ek);
-  }else V.handL.rotation.set(-0.25,0.35,0.15);
-  V.handL.position.set(lx,ly,lz);
-  {const a=V.handL.position,b=_v2.set(-V.hw*1.15,-V.hh*2.4,-0.34);placeCyl(V.foreL,a,b);}
+  let shapeL='mic',onGun=false;
+  if(V.rel>=0){
+    const T=V.rel;V.lDrop=1;
+    V.hand.updateMatrixWorld(true);
+    const magP=V.magNew.localToWorld(V.pA.set(0,-0.0425,0));V.g.worldToLocal(magP);
+    const rackP=V.slide.localToWorld(V.pB.set(0,0.05,-0.08));V.g.worldToLocal(rackP);
+    const offP=restL(1,V.pC);
+    if(T<0.14)restL(easeL(T/0.14),V.lp);
+    else if(T<0.2)V.lp.copy(offP);
+    else if(T<0.56){V.lp.copy(magP);shapeL='mag';onGun=true;}
+    else if(T<0.64){const k=easeL((T-0.56)/0.08);V.lp.copy(magP).lerp(rackP,k);shapeL=k<0.5?'mag':'rack';onGun=true;}
+    else if(T<0.8){V.lp.copy(rackP);shapeL='rack';onGun=true;}
+    else if(T<0.94){V.lp.copy(rackP).lerp(offP,easeL((T-0.8)/0.14));shapeL='rack';onGun=true;}
+    else V.lp.copy(offP);
+  }else{V.lDrop=Math.max(0,V.lDrop-rdt*3);restL(easeL(V.lDrop),V.lp);}
+  V.micFist.visible=shapeL==='mic';V.magHand.visible=shapeL==='mag';V.rackHand.visible=shapeL==='rack';
+  if(onGun)V.handL.quaternion.copy(V.hand.quaternion);else V.handL.rotation.set(-0.25,0.35,0.15);
+  V.handL.position.copy(V.lp);
+  // 왼쪽 팔뚝: 장전 중에는 팔꿈치를 아래·안쪽으로 내려서 화면을 가로지르는 굵은 기둥이 되지 않게 한다
+  V.lArm=lerp(V.lArm,onGun?1:0,1-Math.exp(-10*rdt));
+  {const b=V.armL.set(lerp(-V.hw*1.15,V.hw*0.05,V.lArm),lerp(-V.hh*2.4,-V.hh*3.4,V.lArm),lerp(-0.34,-0.7,V.lArm));placeCyl(V.foreL,V.handL.position,b);}
+
+
+
 }
 function placeCyl(node,a,b){
   const d=_v3.copy(b).sub(a);const len=d.length();
