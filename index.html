@@ -170,14 +170,16 @@ body{font-family:'Noto Sans KR','Noto Sans CJK KR','Apple SD Gothic Neo','Malgun
 #fire.on{display:flex;animation:hudIn .25s cubic-bezier(.2,1.6,.4,1) both}
 #fire.down{transform:translate(4px,4px);box-shadow:1px 1px 0 var(--ink);background:#ffe9ea}
 #fire.empty{color:var(--graphite)}
-#mute{position:fixed;left:calc(var(--safe-l) + 12px);bottom:calc(var(--safe-b) + 12px);width:44px;height:44px;border:3px solid var(--ink);background:#fff;
+#mute{position:fixed;right:calc(var(--safe-r) + 64px);top:calc(var(--safe-t) + 12px);width:44px;height:44px;border:3px solid var(--ink);background:#fff;
   box-shadow:3px 3px 0 var(--ink);cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;z-index:5}
 #mute:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
 #mute svg{width:26px;height:26px;display:block}
 #mute .x{display:none}
 #mute.off .x{display:block} #mute.off .w{display:none}
-#arcadeFace{position:fixed;left:calc(var(--safe-l) + 68px);bottom:calc(var(--safe-b) + 16px);
+#arcadeFace{position:fixed;right:calc(var(--safe-r) + 14px);top:calc(var(--safe-t) + 16px);
   width:36px;height:36px;padding:4px;line-height:0;z-index:6;opacity:.84;touch-action:manipulation}
+body.playing-round #arcadeFace{right:auto;left:calc(var(--safe-l) + 14px)}
+body.playing-round #mute{right:auto;left:calc(var(--safe-l) + 64px)}
 #arcadeFace svg{display:block;width:100%;height:100%;filter:drop-shadow(0 0 1.5px #fff) drop-shadow(1px 2px 1.5px #0006)}
 #arcadeFace:active svg{transform:scale(.88)}
 #arcadeFace:focus-visible{outline:3px solid var(--red);outline-offset:3px}
@@ -2128,6 +2130,7 @@ function resize(){
 window.addEventListener('resize',()=>{clearTimeout(resizeT);resizeT=setTimeout(resize,120);});
 
 function resetGame(){
+  document.body.classList.remove('playing-round');
   stopSpeech();
   stopEndingAudio();
   clearTimeout(timePenaltyTimer);timePenaltyTimer=null;
@@ -2171,7 +2174,7 @@ async function runIntro(){
   await sleep(90);if(!alive())return;
   setShot('pov');speaker.mode='aim';VM.drawT=0;if(!locked)cv.style.cursor='default';
   G.introRaisers.forEach(p=>{if(p.alive&&p.action&&p.action.type==='raise'){const a=p.action;a.hold=Math.max(0,a.t-a.rise)+rnd(6.8,8.6);a.dur=a.rise+a.hold+0.8;}});
-  G.state='play';blackEl.classList.remove('on');hudEl.classList.add('on');murmurTo(0.03,0.6);setPhase('play');
+  G.state='play';document.body.classList.add('playing-round');blackEl.classList.remove('on');hudEl.classList.add('on');murmurTo(0.03,0.6);setPhase('play');
   timerEl.textContent='준비';
   sUi(700);crossEl.classList.add('on');
   setTimeout(()=>{if(alive()){ammoEl.classList.add('on');if(IS_TOUCH)fireEl.classList.add('on');sUi(900);}},160);
@@ -2216,7 +2219,7 @@ async function countBoard(tok){
 async function runEnding(){
   const tok=++G.token;const alive=()=>tok===G.token;
   stopSpeech();
-  G.state='endTalk';updateFinalCountdown(0);hintEl.classList.remove('on');crossEl.classList.remove('on');fireEl.classList.remove('on','down');aimPtrs.clear();unlockPointer();cv.style.cursor='crosshair';
+  G.state='endTalk';document.body.classList.remove('playing-round');updateFinalCountdown(0);hintEl.classList.remove('on');crossEl.classList.remove('on');fireEl.classList.remove('on','down');aimPtrs.clear();unlockPointer();cv.style.cursor='crosshair';
   clearRemark();
   edgeL.classList.remove('on');edgeR.classList.remove('on');
   crowd.people.forEach(p=>{p.action=null;p.look=null;p.scared=0;});
