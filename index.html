@@ -363,6 +363,22 @@ function outlineMat(w){
   if(outlineMats[w]) return outlineMats[w];
   return outlineMats[w]=new THREE.ShaderMaterial({uniforms:{uW:{value:w},uInk:U.uInk},vertexShader:outlineVS,fragmentShader:outlineFS,side:THREE.BackSide});
 }
+// 외곽선 전용 지오메트리: 같은 위치의 꼭짓점이 면 법선을 합쳐 쓰게 해서 상자 모서리에서도 선이 끊기지 않게 한다
+const hullCache=new Map();
+function hullGeo(geo){
+  if(hullCache.has(geo))return hullCache.get(geo);
+  const g=geo.index?geo.toNonIndexed():geo.clone();
+  const p=g.attributes.position,n=g.attributes.normal,acc=new Map(),keys=[];
+  const r=v=>Math.round(v*1e4);
+  for(let i=0;i<p.count;i++){
+    const k=r(p.getX(i))+','+r(p.getY(i))+','+r(p.getZ(i));keys.push(k);
+    const nk=Math.round(n.getX(i)*100)+','+Math.round(n.getY(i)*100)+','+Math.round(n.getZ(i)*100);
+    let e=acc.get(k);if(!e){e={s:new Set(),x:0,y:0,z:0};acc.set(k,e);}
+    if(!e.s.has(nk)){e.s.add(nk);e.x+=n.getX(i);e.y+=n.getY(i);e.z+=n.getZ(i);}
+  }
+  for(let i=0;i<p.count;i++){const e=acc.get(keys[i]);n.setXYZ(i,e.x,e.y,e.z);}
+  n.needsUpdate=true;hullCache.set(geo,g);return g;
+}
 
 /* ================= textures ================= */
 function scribble(ctx,pts,width,passes){
@@ -960,7 +976,7 @@ function paintLectureBoard(cv,narrow=false){
 
 const speaker=(function(){
   const r=makeRig();
-  const add=(node,geo,tone,ow)=>{const m=new THREE.Mesh(geo,hatchMat(false,tone));node.add(m);if(ow){const o=new THREE.Mesh(geo,outlineMat(ow));node.add(o);}return m;};
+  const add=(node,geo,tone,ow)=>{const m=new THREE.Mesh(geo,hatchMat(false,tone));node.add(m);if(ow){const o=new THREE.Mesh(hullGeo(geo),outlineMat(ow));node.add(o);}return m;};
   add(r.legs,Gm.legs,0.72,0.017);add(r.torso,Gm.torso,0.04,0.017);add(r.head,Gm.head,0,0.016);
   const zz=document.createElement('canvas');zz.width=256;zz.height=128;const zc=zz.getContext('2d');zc.strokeStyle='#232323';zc.lineCap='round';zc.lineJoin='round';
   const zp=[];for(let k=0;k<=8;k++)zp.push([20+k*27,(k%2?30:92)+rnd(-5,5)]);scribble(zc,zp,7);
@@ -1059,12 +1075,12 @@ const VM=(function(){
   const hand=new THREE.Group();g.add(hand);
   add(hand,Gm.fistGrip,0.02,0.007,SC);
   const gun=new THREE.Group();hand.add(gun);gun.scale.set(SC*1.5,SC*1.25,SC*GZ);
-  const gunM=new THREE.Mesh(Gm.gunFP,hatchMat(false,0.82));gun.add(gunM);const gunO=new THREE.Mesh(Gm.gunFP,outlineMat(0.008));gun.add(gunO);
-  const slide=new THREE.Group();gun.add(slide);const slM=new THREE.Mesh(Gm.slideFP,hatchMat(false,0.28));slide.add(slM);const slO=new THREE.Mesh(Gm.slideFP,outlineMat(0.008));slide.add(slO);
+  const gunM=new THREE.Mesh(Gm.gunFP,hatchMat(false,0.82));gun.add(gunM);const gunO=new THREE.Mesh(hullGeo(Gm.gunFP),outlineMat(0.008));gun.add(gunO);
+  const slide=new THREE.Group();gun.add(slide);const slM=new THREE.Mesh(Gm.slideFP,hatchMat(false,0.28));slide.add(slM);const slO=new THREE.Mesh(hullGeo(Gm.slideFP),outlineMat(0.008));slide.add(slO);
   const muzzle=new THREE.Object3D();muzzle.position.set(0,0.028,-0.34);gun.add(muzzle);
   const eject=new THREE.Object3D();eject.position.set(0.03,0.055,-0.09);gun.add(eject);
   const magSlot=new THREE.Object3D();magSlot.position.set(0,-0.075,-0.005);gun.add(magSlot);
-  const magNew=new THREE.Mesh(Gm.mag,hatchMat(false,0.8));magSlot.add(magNew);magNew.add(new THREE.Mesh(Gm.mag,outlineMat(0.007)));magNew.visible=false;
+  const magNew=new THREE.Mesh(Gm.mag,hatchMat(false,0.8));magSlot.add(magNew);magNew.add(new THREE.Mesh(hullGeo(Gm.mag),outlineMat(0.007)));magNew.visible=false;
   const foreR=new THREE.Group();g.add(foreR);add(foreR,Gm.foreUnit,0.04,0.012);
   // left hand + mic
   const handL=new THREE.Group();g.add(handL);
@@ -1321,7 +1337,7 @@ function updateCasings(dt){
 }
 const magDrops=[];
 function spawnMagDrop(){
-  const m=new THREE.Mesh(Gm.mag,hatchMat(false,0.8));const o=new THREE.Mesh(Gm.mag,outlineMat(0.007));m.add(o);
+  const m=new THREE.Mesh(Gm.mag,hatchMat(false,0.8));const o=new THREE.Mesh(hullGeo(Gm.mag),outlineMat(0.007));m.add(o);
   const p=new THREE.Vector3();VM.magSlot.getWorldPosition(p);m.position.copy(p);m.quaternion.copy(camera.quaternion);scene.add(m);
   magDrops.push({m,v:new THREE.Vector3(0,-0.6,0).applyQuaternion(camera.quaternion).multiplyScalar(1).add(new THREE.Vector3(0,-0.4,0)),life:1.4});
 }
