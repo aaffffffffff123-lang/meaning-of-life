@@ -57,6 +57,13 @@ body{font-family:'Noto Sans KR','Noto Sans CJK KR','Apple SD Gothic Neo','Malgun
 @keyframes killBump{0%{transform:scale(.55);color:var(--red)}65%{transform:scale(1.2);color:var(--ink)}100%{transform:none}}
 #timer{font-size:clamp(14px,1.6vw,18px);font-weight:700;color:var(--ink);margin-top:2px}
 #timer.low{color:var(--red);animation:blink 1s steps(2) infinite}
+#finalCountdown{position:fixed;left:50%;top:43%;transform:translate(-50%,-50%) rotate(-3deg);
+  font-size:clamp(72px,14vw,160px);line-height:1;font-weight:900;font-variant-numeric:tabular-nums;
+  color:var(--red);text-shadow:3px 3px 0 #fff,-3px -3px 0 #fff,0 0 18px #fff;
+  pointer-events:none;display:none;z-index:1}
+#finalCountdown.on{display:block}
+#finalCountdown.pulse{animation:finalTick .36s cubic-bezier(.18,1.45,.4,1) both}
+@keyframes finalTick{from{opacity:.5;transform:translate(-50%,-50%) rotate(-3deg) scale(1.55)}to{opacity:1;transform:translate(-50%,-50%) rotate(-3deg) scale(1)}}
 #timer.penalty{animation:timePenalty .42s ease-out}
 @keyframes timePenalty{0%,100%{transform:none}25%{transform:translateX(-7px) scale(1.28);color:var(--red)}55%{transform:translateX(5px) scale(1.12);color:var(--red)}}
 @keyframes blink{50%{opacity:.35}}
@@ -73,7 +80,7 @@ body{font-family:'Noto Sans KR','Noto Sans CJK KR','Apple SD Gothic Neo','Malgun
 #ammo.rel #ammoBar{opacity:.4}
 @keyframes hudIn{0%{transform:scale(.3) rotate(6deg);opacity:0}100%{transform:none;opacity:1}}
 
-#cross{position:fixed;left:50%;top:50%;width:64px;height:64px;margin:-32px 0 0 -32px;pointer-events:none;display:none}
+#cross{position:fixed;left:50%;top:50%;width:64px;height:64px;margin:-32px 0 0 -32px;pointer-events:none;display:none;z-index:2}
 #cross.on{display:block;animation:hudIn .25s cubic-bezier(.2,1.6,.4,1) both}
 #cross svg{display:block;width:64px;height:64px;filter:drop-shadow(0 0 2px #fff) drop-shadow(0 0 2px #fff)}
 .hitmark{position:absolute;transform:translate(-50%,-50%);font-size:44px;font-weight:900;color:var(--ink);line-height:1;animation:hm .16s ease-out forwards}
@@ -185,6 +192,7 @@ body{font-family:'Noto Sans KR','Noto Sans CJK KR','Apple SD Gothic Neo','Malgun
   <div id="ammo"><span id="ammoN">10</span><span id="ammoM">/ 10</span><div id="ammoBar"></div><div id="reloading">장전 중…</div></div>
 </div>
 <div id="cross"><svg viewBox="0 0 64 64"><g fill="none" stroke="#232323" stroke-width="3" stroke-linecap="round"><path d="M32 3c-3 2-8 6-8 6M32 61c2-4 6-8 6-8"/><circle cx="32" cy="32" r="17"/><path d="M32 6v10M32 48v10M6 32h10M48 32h10"/></g><circle cx="32" cy="32" r="3.2" fill="#232323"/></svg></div>
+<div id="finalCountdown" aria-live="off"></div>
 <div id="hint" class="halo"></div>
 <div id="joke"></div>
 <div id="big"></div>
@@ -1051,7 +1059,7 @@ function speakerUpdate(dt,t){
   if(S.mode==='raise'){setArm(P.L,micArm);setArm(P.R,armP(-0.1,2.75,-0.2,0.35+Math.sin(t*3)*0.06));P.tilt=0.04;face=talking;}
   else if(S.mode==='mic'||S.mode==='aim'){setArm(P.L,micArm);face=talking;}
   else if(S.mode==='angry'){setArm(P.L,armP(0,0.2,-0.2,0));face=FACE.angry;P.lean=0.08;}
-  else if(S.mode==='reload'){setArm(P.L,armP(-0.3,0.25,-0.5,0));setArm(P.R,armP(-1.05,-0.32,-1.5,0));face=FACE.angry;P.lean=0.05;P.pitch=0.12;}
+  else if(S.mode==='reload'){setArm(P.L,armP(-0.3,0.25,-0.5,0));setArm(P.R,armP(0.07,-1.18,-1.73,0.56));face=FACE.angry;P.lean=0.05;P.pitch=0.12;}
   else if(S.mode==='spread'){setArm(P.L,armP(-0.15,1.35+Math.sin(t*4)*0.08,-0.1,-0.25));setArm(P.R,armP(-0.1,2.75,-0.05,0.3+Math.sin(t*5)*0.1));P.tilt=-0.14;P.roll=0.22;P.lean=-0.05;face=S.talk>0&&Math.floor(t*9)%2?FACE.talk:FACE.smile;}
   else if(S.mode==='laugh'){const k=t*8;setArm(P.L,armP(-0.1,1.4+Math.sin(k)*0.3,-0.2,0.3));setArm(P.R,armP(-0.1,2.4+Math.cos(k)*0.3,-0.2,0.2));P.bob=Math.abs(Math.sin(k))*0.05;P.lean=-0.1+Math.sin(k*0.5)*0.1;P.pitch=-0.25;face=FACE.laughA;}
   const k=1-Math.exp(-10*dt);
@@ -1081,14 +1089,14 @@ function speakerUpdate(dt,t){
     if(!S.clacked&&T>=0.72){S.clacked=true;shake=0.6;const gp=new THREE.Vector3();S.slide.getWorldPosition(gp);const g=toScreen(gp);
       fxDiv('tang halo',g.x+rnd(40,70),g.y-rnd(50,80),'철컥',700,{'--r':rnd(-14,-4)+'deg'});}
   }else{S.slide.position.y=0;}
-  S.gun.rotation.y=lerp(S.gun.rotation.y,S.mode==='reload'?-PI/2:0,1-Math.exp(-14*dt));
+  S.gun.rotation.y=lerp(S.gun.rotation.y,S.mode==='reload'?-0.28:0,1-Math.exp(-14*dt));
   S.recoil=Math.max(0,S.recoil-dt*6);
   if(S.recoil>0.6)S.slide.position.y=0.05*(S.recoil-0.6)/0.4;
   S.gun.visible=S.mode==='aim'||S.mode==='angry'||S.mode==='reload';
   S.mic.visible=S.mode!=='laugh'&&S.mode!=='reload'&&S.mode!=='angry';
   {const R=r.arms[1],L=r.arms[0];
    R.fist.visible=S.gun.visible;R.open.visible=!S.gun.visible;
-   const lf=S.mic.visible||(S.mode==='reload'&&S.relT>0.5&&S.relT<0.86);L.fist.visible=lf;L.open.visible=!lf;}
+   const lf=S.mic.visible||(S.mode==='reload'&&S.relT>0.38&&S.relT<1.04);L.fist.visible=lf;L.open.visible=!lf;}
   S.face.material.uniforms.uFace.value=face;
   if(S.talk>0)S.talk-=dt;
 }
@@ -1651,7 +1659,17 @@ function unlockSpeech(){
 if('speechSynthesis' in window){findVoice();speechSynthesis.onvoiceschanged=()=>{findVoice();pumpSpeech();};}
 
 /* ================= UI helpers ================= */
-const capEl=$('#caption'),remarkEl=$('#remark'),hudEl=$('#hud'),scoreEl=$('#score'),killsEl=$('#kills'),timerEl=$('#timer'),hintEl=$('#hint'),fxEl=$('#fx'),kkEl=$('#kk'),boardEl=$('#board'),bigEl=$('#big'),blackEl=$('#black'),crossEl=$('#cross'),ammoEl=$('#ammo');
+const capEl=$('#caption'),remarkEl=$('#remark'),hudEl=$('#hud'),scoreEl=$('#score'),killsEl=$('#kills'),timerEl=$('#timer'),finalCountdownEl=$('#finalCountdown'),hintEl=$('#hint'),fxEl=$('#fx'),kkEl=$('#kk'),boardEl=$('#board'),bigEl=$('#big'),blackEl=$('#black'),crossEl=$('#cross'),ammoEl=$('#ammo');
+function updateFinalCountdown(tl){
+  const show=G.state==='play'&&G.timerStarted&&tl>0&&tl<=10;
+  finalCountdownEl.classList.toggle('on',show);
+  timerEl.style.visibility=show?'hidden':'';
+  if(!show){finalCountdownEl.textContent='';return;}
+  if(finalCountdownEl.textContent!==String(tl)){
+    finalCountdownEl.textContent=tl;
+    finalCountdownEl.classList.remove('pulse');void finalCountdownEl.offsetWidth;finalCountdownEl.classList.add('pulse');
+  }
+}
 let capTimer=null;
 function caption(text,ms){
   clearTimeout(capTimer);capEl.textContent=text;capEl.classList.add('on');
@@ -1735,7 +1753,7 @@ function setScore(bumpKill=false){
 }
 function beginPlayTimer(){
   if(G.state!=='play'||G.timerStarted)return;
-  G.timerStarted=true;hintEl.classList.remove('on');timerEl.textContent='남은 시간 '+Math.ceil(G.timeLeft);
+  G.timerStarted=true;hintEl.classList.remove('on');timerEl.textContent='남은 시간 '+Math.ceil(G.timeLeft);updateFinalCountdown(Math.ceil(G.timeLeft));
 }
 function setAmmo(){
   $('#ammoN').textContent=G.ammo;ammoEl.classList.toggle('empty',G.ammo===0);$('#fire').classList.toggle('empty',G.ammo===0);
@@ -1919,7 +1937,7 @@ function fire(tx,ty){
   if(correct){G.score+=5;G.hits++;sDing();fxDiv('pop good halo',hs.x,hs.y-40,'+5',900);remark(REM_GOOD);sScream(Math.min(4,1+Math.floor(screams/2)));}
   else{G.score-=10;G.misses++;G.timeLeft=Math.max(0,G.timeLeft-WRONG_TIME_PENALTY);sGasp();murmurDuck(1.2);fxDiv('pop bad halo',hs.x,hs.y-40,'−10 · −'+WRONG_TIME_PENALTY+'초',950);bubbleOn(target,pick(LAST_WORDS),1800);
     scoreEl.classList.remove('hurt');void scoreEl.offsetWidth;scoreEl.classList.add('hurt');
-    timerEl.textContent='남은 시간 '+Math.max(0,Math.ceil(G.timeLeft));clearTimeout(timePenaltyTimer);timerEl.classList.remove('penalty');void timerEl.offsetWidth;timerEl.classList.add('penalty');timePenaltyTimer=setTimeout(()=>timerEl.classList.remove('penalty'),440);
+    timerEl.textContent='남은 시간 '+Math.max(0,Math.ceil(G.timeLeft));updateFinalCountdown(Math.ceil(G.timeLeft));clearTimeout(timePenaltyTimer);timerEl.classList.remove('penalty');void timerEl.offsetWidth;timerEl.classList.add('penalty');timePenaltyTimer=setTimeout(()=>timerEl.classList.remove('penalty'),440);
     const tok=G.token;setTimeout(()=>{if(tok===G.token&&G.state==='play')remark(REM_BAD,true);},300);}
   setScore(true);
   if(Math.random()<0.3){const al=crowd.people.filter(p=>p.alive&&!p.action&&!p.isRaised());for(let k=0;k<2&&al.length;k++)pick(al).start('clap');}
@@ -1980,7 +1998,7 @@ function resetGame(){
   stopSpeech();
   clearTimeout(timePenaltyTimer);timePenaltyTimer=null;
   G.score=0;G.hits=0;G.misses=0;G.postKills=0;G.timeLeft=PLAY_TIME;G.spawnT=2.5;G.waveT=6.8;G.waveN=0;G.finalDone=false;G.noRaiseT=0;G.lastRemark=0;G.freeze=0;G.ammo=MAG;G.lastTick=99;G.timerStarted=false;G.boardReady=false;
-  setScore();setAmmo();timerEl.textContent='';timerEl.classList.remove('low','penalty');
+  setScore();setAmmo();timerEl.textContent='';timerEl.classList.remove('low','penalty');updateFinalCountdown(0);
   clearRemark();lastRemarkText='';
   bubbles.length=0;fxEl.innerHTML='';kkEl.textContent='';boardEl.classList.remove('on');boardEl.innerHTML='';
   $('#againBox').classList.remove('on');$('#joke').classList.remove('on');crossEl.classList.remove('on');fireEl.classList.remove('on','down');aimPtrs.clear();ammoEl.classList.remove('on','rel','empty');hintEl.classList.remove('on');bigOff();
@@ -2062,7 +2080,7 @@ async function countBoard(tok){
 async function runEnding(){
   const tok=++G.token;const alive=()=>tok===G.token;
   stopSpeech();
-  G.state='endTalk';hintEl.classList.remove('on');crossEl.classList.remove('on');fireEl.classList.remove('on','down');aimPtrs.clear();unlockPointer();cv.style.cursor='crosshair';
+  G.state='endTalk';updateFinalCountdown(0);hintEl.classList.remove('on');crossEl.classList.remove('on');fireEl.classList.remove('on','down');aimPtrs.clear();unlockPointer();cv.style.cursor='crosshair';
   clearRemark();
   edgeL.classList.remove('on');edgeR.classList.remove('on');
   crowd.people.forEach(p=>{p.action=null;p.look=null;p.scared=0;});
@@ -2194,7 +2212,7 @@ function frame(now){
   clockT+=dt;
   if(G.state==='play'){
     if(G.timerStarted){
-      G.timeLeft-=rdt;const tl=Math.max(0,Math.ceil(G.timeLeft));timerEl.textContent='남은 시간 '+tl;
+      G.timeLeft-=rdt;const tl=Math.max(0,Math.ceil(G.timeLeft));timerEl.textContent='남은 시간 '+tl;updateFinalCountdown(tl);
       if(tl<=10){timerEl.classList.add('low');if(tl<G.lastTick&&tl>0)sTimer();}G.lastTick=tl;
       scheduleCrowd(dt);
       const alive=crowd.people.filter(p=>p.alive).length;
