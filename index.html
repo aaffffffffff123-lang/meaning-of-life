@@ -122,8 +122,6 @@ body{font-family:'Noto Sans KR','Noto Sans CJK KR','Apple SD Gothic Neo','Malgun
   padding:.1em .45em .15em;font-weight:900;font-size:clamp(16px,2vw,24px);animation:headIn .7s ease-out forwards;white-space:nowrap}
 @keyframes headIn{0%{opacity:0;transform:translate(-50%,-50%) rotate(-3deg) scale(.4)}15%{opacity:1;transform:translate(-50%,-50%) rotate(-3deg) scale(1.1)}
   75%{opacity:1;transform:translate(-50%,-70%) rotate(-3deg)}100%{opacity:0;transform:translate(-50%,-90%) rotate(-3deg)}}
-.flash{position:absolute;width:120px;height:120px;transform:translate(-50%,-50%) rotate(var(--r)) scale(var(--sc,1));animation:flash .12s steps(2) forwards}
-@keyframes flash{0%{opacity:1}100%{opacity:0}}
 .bubble{position:absolute;transform:translate(-50%,-100%);background:#fff;border:2px solid var(--ink);border-radius:14px 14px 14px 3px;
   padding:4px 10px;font-size:clamp(13px,1.5vw,17px);font-weight:500;white-space:nowrap}
 .lens{position:absolute;width:var(--w);height:var(--w);transform:translate(-50%,-50%) rotate(var(--r));animation:lens .9s ease-in forwards}
@@ -178,6 +176,11 @@ body{font-family:'Noto Sans KR','Noto Sans CJK KR','Apple SD Gothic Neo','Malgun
 #mute svg{width:26px;height:26px;display:block}
 #mute .x{display:none}
 #mute.off .x{display:block} #mute.off .w{display:none}
+#arcadeFace{position:fixed;left:calc(var(--safe-l) + 68px);bottom:calc(var(--safe-b) + 16px);
+  width:36px;height:36px;padding:4px;line-height:0;z-index:6;opacity:.84;touch-action:manipulation}
+#arcadeFace svg{display:block;width:100%;height:100%;filter:drop-shadow(0 0 1.5px #fff) drop-shadow(1px 2px 1.5px #0006)}
+#arcadeFace:active svg{transform:scale(.88)}
+#arcadeFace:focus-visible{outline:3px solid var(--red);outline-offset:3px}
 #unsupported{display:none;margin-top:24px;max-width:30em;font-size:clamp(16px,2vw,20px);font-weight:700;line-height:1.55;word-break:keep-all}
 #unsupported.on{display:block}
 @media (orientation:landscape){#remark{top:72%;max-width:min(74vw,34em)}}
@@ -206,6 +209,7 @@ body{font-family:'Noto Sans KR','Noto Sans CJK KR','Apple SD Gothic Neo','Malgun
 <button id="mute" title="소리 켜기/끄기" aria-label="소리 켜기/끄기">
   <svg viewBox="0 0 24 24" fill="none" stroke="#232323" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h3.5L12 5v14l-4.5-4H4z"/><path class="w" d="M15.5 9.5a3.5 3.5 0 0 1 0 5M18 7a7 7 0 0 1 0 10"/><path class="x" d="M16 9.5l5 5M21 9.5l-5 5"/></svg>
 </button>
+<a id="arcadeFace" href="https://aaffffffffff123-lang.github.io/arcade/" target="_top" aria-label="혐규오락실 — 다른 게임 하러 가기" title="혐규오락실"><svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24.00 2.84 C27.19 2.93 30.48 3.49 33.44 4.70 C36.39 5.91 39.79 7.65 41.72 10.08 C43.64 12.51 44.41 16.18 44.97 19.28 C45.53 22.39 45.73 25.72 45.08 28.74 C44.42 31.76 43.07 35.11 41.06 37.40 C39.05 39.69 35.87 41.15 33.03 42.47 C30.19 43.79 27.09 45.14 24.00 45.31 C20.91 45.47 17.40 44.72 14.49 43.46 C11.58 42.19 8.30 40.21 6.54 37.72 C4.78 35.22 4.45 31.57 3.93 28.51 C3.41 25.45 2.76 22.23 3.42 19.37 C4.08 16.52 6.10 13.90 7.91 11.36 C9.72 8.82 11.61 5.56 14.29 4.14 C16.97 2.72 20.81 2.75 24.00 2.84 Z" fill="#221D1F"/><g stroke="#EFF1EC" stroke-width="2.2" stroke-linecap="round" fill="none"><path d="M13.2 8.4V17.9"/><path d="M20.4 6.2V16.6"/><path d="M27.6 6.2V16.6"/><path d="M34.6 8.8V18.3"/></g><g fill="#EFF1EC"><ellipse cx="18.1" cy="25.2" rx="2" ry="2.3"/><ellipse cx="29.9" cy="25.2" rx="2" ry="2.3"/></g><path d="M19.9 32.3a4.6 4.6 0 0 0 8.2 0" fill="none" stroke="#EFF1EC" stroke-width="2.3" stroke-linecap="round"/></svg></a>
 <div id="title">
   <h1>삶의 의미</h1>
   <button id="start" class="btn">시작하기</button>
@@ -821,6 +825,8 @@ class Person{
     this.fall={t:0,type,dir:Math.random()<0.5?-1:1,dur:rnd(0.42,0.55),limpL:rnd(0.5,1.5),limpR:rnd(0.5,1.5),wrong:!correct,keep,
       push:new THREE.Vector3(dir.x,0,dir.z).normalize(),kb:type==='crumple'?rnd(0.12,0.22):rnd(0.35,0.6),head:part==='head'};
     this.hitT=0;
+    this.cur.pitch=part==='head'?-1.02:-0.62;
+    this.cur.roll=this.fall.dir*(part==='head'?0.25:0.12);
   }
   updateDead(dt,t){
     const f=this.fall;f.t+=dt;
@@ -828,6 +834,7 @@ class Person{
     const e=k<1?1-Math.pow(1-k,3):1;
     const bounce=k>=1?Math.max(0,Math.sin((f.t-f.dur)*14)*Math.exp(-(f.t-f.dur)*7))*0.12:0;
     const r=this.rig,C=this.cur;
+    const impact=Math.max(0,1-f.t/0.11);
     setArm(this.tgt.L,f.keep>0?RAISED:LIMP(f.limpL));setArm(this.tgt.R,f.keep<0?RAISED:LIMP(f.limpR));
     const kk=1-Math.exp(-6*dt);lerpArm(C.L,this.tgt.L,kk);lerpArm(C.R,this.tgt.R,kk);
     const snap=f.t<0.14?-0.8:(f.type==='crumple'?0.5:-0.2);
@@ -846,6 +853,8 @@ class Person{
       r.root.rotation.set(-1.3*e+bounce,this.baseYaw,f.dir*0.15*e);
       r.root.position.set(px,this.floorY+0.06*e,pz);
     }
+    r.body.rotation.x-=impact*(f.head?0.38:0.24);
+    r.body.rotation.z+=f.dir*impact*0.18;
     if(this.hit<1){this.hit=Math.min(1,this.hit+dt*7);crowd.dirtyHit=true;}
     if(f.t>0.26&&!this.poolPos){
       r.root.updateMatrixWorld(true);
@@ -1544,7 +1553,7 @@ function sHit(headshot){
   if(choice===A.lastHurt)choice=voices[(voices.indexOf(choice)+1+Math.floor(Math.random()*(voices.length-1)))%voices.length];
   A.lastHurt=choice;
   // A short human yelp answers the shot, instead of another synthetic impact or score beep.
-  playSfx(choice,0.075,headshot?0.82:0.76,rnd(0.94,1.05));
+  playSfx(choice,0.025,headshot?0.82:0.76,rnd(0.94,1.05));
 }
 function sFall(delay){
   if(!A.ctx)return;const C=A.ctx,t=C.currentTime+delay;
@@ -1789,9 +1798,50 @@ function bigLine(text){bigEl.textContent=text;bigEl.classList.remove('on');void 
 function bigOff(){bigEl.classList.remove('on');}
 function toScreen(v){const p=v.clone().project(camera);return {x:(p.x*0.5+0.5)*W,y:(-p.y*0.5+0.5)*H,z:p.z};}
 function fxDiv(cls,x,y,html,ms,style){const d=document.createElement('div');d.className=cls;d.style.left=x+'px';d.style.top=y+'px';if(style)for(const k in style)d.style.setProperty(k,style[k]);d.innerHTML=html;fxEl.appendChild(d);setTimeout(()=>d.remove(),ms);return d;}
-const flashSVG=(function(){let s='<svg viewBox="-50 -50 100 100" width="120" height="120"><g stroke="#232323" stroke-width="3" stroke-linecap="round">';
-  for(let i=0;i<16;i++){const a=i/16*PI*2+rnd(-0.1,0.1),r0=rnd(6,12),r1=rnd(26,48);s+=`<line x1="${Math.cos(a)*r0}" y1="${Math.sin(a)*r0}" x2="${Math.cos(a)*r1}" y2="${Math.sin(a)*r1}"/>`;}
-  return s+'</g><circle r="10" fill="#232323"/><circle r="5" fill="#fff"/></svg>';})();
+// 총구에 붙은 3D 화염. 화면 위에 고정된 SVG를 그리지 않는다.
+function makeGunFlash(muzzle,sideways=false){
+  const root=new THREE.Group();muzzle.add(root);root.visible=false;
+  root.rotation.x=sideways?-PI/2:0; // 강연자의 총열은 로컬 -Y 방향
+  const mat=(color)=>new THREE.MeshBasicMaterial({color,transparent:true,opacity:1,
+    depthTest:false,depthWrite:false,side:THREE.DoubleSide});
+  const shell=new THREE.Mesh(new THREE.ConeGeometry(0.055,0.31,5),mat(0xff9e16));
+  shell.rotation.x=-PI/2;shell.position.z=-0.155;root.add(shell);
+  const inner=new THREE.Mesh(new THREE.ConeGeometry(0.027,0.23,5),mat(0xffe25a));
+  inner.rotation.x=-PI/2;inner.position.z=-0.105;root.add(inner);
+  const core=new THREE.Mesh(new THREE.SphereGeometry(0.044,8,6),mat(0xfff4b8));
+  core.position.z=-0.025;root.add(core);
+  const sparks=[];
+  for(let i=0;i<8;i++){
+    const mesh=new THREE.Mesh(new THREE.ConeGeometry(0.008,0.12,3),mat(i%3?0xffc32b:0xffee83));
+    root.add(mesh);sparks.push({mesh,vel:new THREE.Vector3()});
+  }
+  return {root,shell,inner,core,sparks,left:0};
+}
+const flashPOV=makeGunFlash(VM.muzzle);
+const flashSpeaker=makeGunFlash(speaker.muzzle,true);
+const flashAxis=new THREE.Vector3(0,1,0);
+function burstGunFlash(f){
+  f.left=0.11;f.root.visible=true;f.root.rotation.z=rnd(-0.25,0.25);
+  f.root.scale.setScalar(rnd(0.86,1.13));
+  for(const s of f.sparks){
+    const dir=new THREE.Vector3(rnd(-0.8,0.8),rnd(-0.8,0.8),-rnd(0.8,1.4)).normalize();
+    const len=rnd(0.075,0.2);
+    s.mesh.scale.set(rnd(0.7,1.3),len/0.12,1);
+    s.mesh.quaternion.setFromUnitVectors(flashAxis,dir);
+    s.mesh.position.copy(dir).multiplyScalar(len*0.52);
+    s.mesh.material.opacity=1;s.vel.copy(dir).multiplyScalar(rnd(1.3,2.7));
+  }
+  f.shell.material.opacity=f.inner.material.opacity=f.core.material.opacity=1;
+}
+function updateGunFlash(f,dt){
+  if(f.left<=0)return;
+  f.left=Math.max(0,f.left-dt);
+  if(f.left===0){f.root.visible=false;return;}
+  const strength=Math.min(1,f.left/0.075);
+  f.shell.material.opacity=strength*0.9;
+  f.inner.material.opacity=f.core.material.opacity=strength;
+  for(const s of f.sparks){s.mesh.position.addScaledVector(s.vel,dt);s.mesh.material.opacity=strength;}
+}
 const lensSVG=(function(){let s='<svg viewBox="-50 -50 100 100" width="100%" height="100%"><g fill="#d9101a">';
   const blob=(cx,cy,R,n,j)=>{let d='';for(let i=0;i<=n;i++){const a=i/n*PI*2;const r=R*(1+j*Math.sin(a*4+cx)+rnd(-0.1,0.1));d+=(i?'L':'M')+(cx+Math.cos(a)*r).toFixed(1)+' '+(cy+Math.sin(a)*r).toFixed(1);}return d+'Z';};
   s+=`<path d="${blob(0,0,26,24,0.3)}" opacity=".9"/>`;
@@ -1944,12 +1994,7 @@ function fire(tx,ty){
   const now=performance.now();if(now-G.lastFire<115)return;G.lastFire=now;
   const play=G.state==='play';
   if(play)beginPlayTimer();
-  let sx=tx,sy=ty,as=null;
-  if(play){
-    sx=W/2;sy=H/2;
-    as=assistTarget(W/2,H/2);
-    if(as){const s=toScreen(as.point);sx=s.x;sy=s.y;}
-  }
+  let sx=play?W/2:tx,sy=play?H/2:ty;
   if(play){
     if(VM.rel>=0)return;
     if(G.ammo<=0){sDry();camKick(0.004,0.2);startReload();return;}
@@ -1959,18 +2004,25 @@ function fire(tx,ty){
   sGun();
   const r=rayFromScreen(sx,sy);const o=r.origin.clone(),d=r.direction.clone();
   if(play){
-    const mz=new THREE.Vector3();VM.muzzle.getWorldPosition(mz);const ms=toScreen(mz);
-    fxDiv('flash',ms.x,ms.y-10,flashSVG,120,{'--r':rnd(0,360)+'deg','--sc':portrait?0.8:1});
-    fxDiv('tang halo',ms.x+rnd(-20,50),ms.y-rnd(60,110),'탕',560,{'--r':rnd(-18,18)+'deg'});
+    burstGunFlash(flashPOV);
   }else{
-    const mz=toScreen(new THREE.Vector3().setFromMatrixPosition(speaker.muzzle.matrixWorld));
-    fxDiv('flash',mz.x,mz.y,flashSVG,130,{'--r':rnd(0,360)+'deg','--sc':0.7});
-    fxDiv('tang halo',mz.x+rnd(-30,30),mz.y-rnd(30,60),'탕',560,{'--r':rnd(-18,18)+'deg'});
+    burstGunFlash(flashSpeaker);
   }
   let target=null,point=null,part='torso';
-  const ex=as?null:personHit(o,d);
-  if(as){target=as.p;point=as.point;part=as.part;}
-  else if(ex){target=ex.p;point=o.clone().addScaledVector(d,ex.t);part=ex.part;}
+  const ex=personHit(o,d);
+  if(ex){target=ex.p;point=o.clone().addScaledVector(d,ex.t);part=ex.part;}
+  else if(play){
+    const near=assistTarget(sx,sy);
+    if(near){
+      const aim=toScreen(near.point),rr=rayFromScreen(aim.x,aim.y);
+      const blocker=personHit(rr.origin,rr.direction);
+      const wall=envHit(rr.origin,rr.direction);
+      const targetDistance=near.point.distanceTo(rr.origin);
+      if((!blocker||blocker.p===near.p)&&(!wall||wall.t>=targetDistance)){
+        target=near.p;point=near.point;part=near.part;sx=aim.x;sy=aim.y;
+      }
+    }
+  }
   if(!target){
     const e=envHit(o,d);
     if(e){addHole(e.p,e.n);dust(e.p,7,e.n);sMark();}
@@ -2013,9 +2065,9 @@ function fire(tx,ty){
     fxDiv('hitmark'+(correct?'':' red'),sx,sy,'✕',170);
     fxDiv('ono halo',hs.x+rnd(-50,50),hs.y-rnd(10,50),pick(headshot?ONO_HEAD:ONO_HIT),720,{'--r':rnd(-22,22)+'deg','--s':sizePx+'px'});
     if(headshot)fxDiv('head halo',sx+rnd(40,70),sy-rnd(50,80),'헤드샷',760);
-    G.freeze=Math.max(G.freeze,correct?0.07:0.2);
+    G.freeze=Math.max(G.freeze,correct?0.035:0.065);
   }
-  if(correct){G.score+=5;G.hits++;sDing(0.22);fxDiv('pop good halo',hs.x,hs.y-40,'+5',900);remark(REM_GOOD);sScream(Math.min(4,1+Math.floor(screams/2)));}
+  if(correct){G.score+=5;G.hits++;sDing(0.11);fxDiv('pop good halo',hs.x,hs.y-40,'+5',900);remark(REM_GOOD);sScream(Math.min(4,1+Math.floor(screams/2)));}
   else{G.score-=10;G.misses++;G.timeLeft=Math.max(0,G.timeLeft-WRONG_TIME_PENALTY);sGasp();murmurDuck(1.2);fxDiv('pop bad halo',hs.x,hs.y-40,'−10 · −'+WRONG_TIME_PENALTY+'초',950);bubbleOn(target,pick(LAST_WORDS),1800);
     scoreEl.classList.remove('hurt');void scoreEl.offsetWidth;scoreEl.classList.add('hurt');
     timerEl.textContent='남은 시간 '+Math.max(0,Math.ceil(G.timeLeft));updateFinalCountdown(Math.ceil(G.timeLeft));clearTimeout(timePenaltyTimer);timerEl.classList.remove('penalty');void timerEl.offsetWidth;timerEl.classList.add('penalty');timePenaltyTimer=setTimeout(()=>timerEl.classList.remove('penalty'),440);
@@ -2085,7 +2137,8 @@ function resetGame(){
   bubbles.length=0;fxEl.innerHTML='';kkEl.textContent='';boardEl.classList.remove('on');boardEl.innerHTML='';
   $('#againBox').classList.remove('on');$('#joke').classList.remove('on');crossEl.classList.remove('on');fireEl.classList.remove('on','down');aimPtrs.clear();ammoEl.classList.remove('on','rel','empty');hintEl.classList.remove('on');bigOff();
   pPos.fill(-999);pLife.fill(0);clearDecals();casings.forEach(c=>c.m.visible=false);magDrops.forEach(d=>scene.remove(d.m));magDrops.length=0;
-  VM.rel=-1;VM.recoil=0;
+  VM.rel=-1;VM.recoil=0;flashPOV.left=flashSpeaker.left=0;
+  flashPOV.root.visible=flashSpeaker.root.visible=false;
   portrait=layoutPortrait();buildCrowd(portrait);
   speaker.mode='mic';
 }
@@ -2309,6 +2362,7 @@ function frame(now){
   speakerUpdate(dt,clockT);
   updateCamera(rdt);
   vmUpdate(rdt,dt);
+  updateGunFlash(flashPOV,rdt);updateGunFlash(flashSpeaker,rdt);
   updateParticles(dt);updateCasings(dt);updateMagDrops(dt);
   dropMat.uniforms.uScale.value=(H*DPR)/(2*Math.tan(camera.fov*PI/360));
   updateBubbles();updateEdge();updateCaption();
