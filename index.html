@@ -1477,7 +1477,7 @@ function playSfx(name,delay=0,volume=1,rate=1){
   src.connect(g);g.connect(A.master);src.start(A.ctx.currentTime+delay);return true;
 }
 const A={ctx:null,muted:false};
-try{A.muted=localStorage.getItem('sm_mute')==='1';}catch(e){}
+
 function audioInit(){
   if(A.ctx){if(A.ctx.state!=='running')A.ctx.resume();return;}
   const C=new (window.AudioContext||window.webkitAudioContext)();A.ctx=C;
@@ -1490,7 +1490,7 @@ function audioInit(){
   loadSfx(C);
   // Continuous crowd murmur removed.
 }
-function setMuted(m){A.muted=m;try{localStorage.setItem('sm_mute',m?'1':'0');}catch(e){}
+function setMuted(m){A.muted=m;
   $('#mute').classList.toggle('off',m);if(A.master)A.master.gain.setTargetAtTime(m?0:0.85,A.ctx.currentTime,0.02);
   if(!m&&A.ctx&&A.ctx.state==='suspended'&&!document.hidden)A.ctx.resume().catch(()=>{});
   if(m)stopSpeech();}
